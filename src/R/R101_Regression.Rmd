@@ -1,0 +1,236 @@
+---
+title: "Regression Data Analysis"
+author: "Xing Song"
+date: "10/29/2022"
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,warning=F,fig.width=8, fig.height=5)
+
+#load packages
+pacman::p_load(tidyverse,pROC)
+
+#load data
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+```
+
+
+## Linear Regression (16.2)
+
+Linear regression provides the foundation for many types of analyses we perform on health data. In the simplest scenario, we try to relate one continuous outcome, `y`, to a single continuous covariate, `x`, by trying to find values for `b0` and `b1` so that: 
+`y = b0 + b1*x`. 
+
+> To estimate if `AGE_AT_ALS1DX` is associated with `RILUZ_DUR`; the younger you are, the more likely you will be exposed to Riluzole longer? 
+
+```{r}
+ggplot(aset, aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit1<-glm(RILUZ_DUR ~ AGE_AT_ALS1DX, 
+          data=aset)
+
+#model summary
+summary.lm(fit1)
+
+#confidence interval of coefficients
+confint(fit1)
+```
+
+*******************************************************************************************************************
+
+**Model Diagnostic**
+
+However, there are three assumptions for regression analysis which you need to check to validate the model results. It is always a good practice to perform **residual analysis** (or diagnostic plots) to visually check the following three assumptions:
+
+* Independence: residual vs. predicted plot, or actual vs. predicted plot
+* Homoscedasticity (equal variance): residual vs. predicted plot, or actual vs. predicted plot
+
+```{r,fig.height=4}
+# values needed for model diagnostics
+resid_dat<-data.frame(actual=fit1$data$RILUZ_DUR,
+                      predicted=fit1$fitted.values,
+                      residual=fit1$residuals)
+
+ggplot(data=resid_dat,aes(x=predicted,y=residual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+
+ggplot(data=resid_dat,aes(x=predicted,y=actual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+```
+
+
+* Normality: Quartile - Quartile plot (QQ-plot)
+
+```{r}
+ggplot(data=resid_dat,aes(sample=residual))+
+  stat_qq()+stat_qq_line()
+```
+
+**Remark**: you may want to perform log transformation on both numerical outcome and covariate, so that the residuals would look more homoscedastic and normal. But you want to be cautious about how you interpret the resulting coefficient. 
+
+
+```{r}
+ggplot(aset %>% filter(RILUZ_DUR > 0), aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit2<-glm(RILUZ_DUR ~ AGE_AT_ALS1DX, 
+          data=aset %>% filter(RILUZ_DUR > 0),
+          family = 'poisson')
+
+#model summary
+summary.lm(fit2)
+
+#confidence interval of coefficients
+confint(fit2)
+
+```
+
+
+```{r}
+resid_dat<-data.frame(actual=fit2$data$RILUZ_DUR,
+                      predicted=fit2$fitted.values,
+                      residual=fit2$residuals)
+
+ggplot(data=resid_dat,aes(x=predicted,y=residual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+```
+
+
+*******************************************************************************************************************
+
+**Goodness of fit**
+
+* R-square: evaluate the percentage of variations that can be explained by the model. The higher the R-square value, the better the linear model fitted
+
+```{r}
+# direct calculation of R-sq
+1-fit1$deviance/fit1$null.deviance
+1-fit2$deviance/fit1$null.deviance
+
+# R-sq is also part of the standard output of summary.lm()
+summary.lm(fit2)
+```
+
+
+
+*******************************************************************************************************************
+*******************************************************************************************************************
+
+
+### Logisit Regression (16.3)
+
+Now, let's look at another question or interest: 
+
+> To estimate if there is an association between `AGE_AT_ALS1DX` and `MORT_1YR`
+
+
+Notice that there are a few patients who we lost of follow-up (i.e., censored before 1 year mark)
+
+```{r}
+aset %>%
+  filter(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365)
+```
+
+
+```{r}
+aset2<-aset %>% 
+  filter(!(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365))
+```
+
+
+```{r}
+ggplot(aset2, aes(x=AGE_AT_ALS1DX,y=MORT_1YR))+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit3<-glm(MORT_1YR ~ AGE_AT_ALS1DX, data=aset2,family='binomial') 
+summary(fit3)
+```
+
+
+*******************************************************************************************************************
+
+**Goodness of fit**
+
+* Predictions: in logistic regression, the predictions are the _predicted probabilities_ of your target event (outcome).
+
+```{r pred}
+# values needed for model diagnostics
+resid_dat<-data.frame(actual=fit3$data$MORT_1YR,
+                       predicted=fit3$fitted.values,
+                       residual=fit3$residuals)
+
+table(resid_dat$predicted)
+```
+
+Let's create a rule to further classify the predictions: if predicted probability >= 0.2, then MORT_1YR = 1; otherwise, MORT_1YR = 0. Then, my final *confusion matrix* (or *error matrix*) will be: 
+
+```{r}
+resid_dat<-resid_dat %>% 
+  mutate(MORT_1YR_hat=case_when(predicted>=0.2 ~ 1,
+                               TRUE ~ 0))
+confusion_matrix<-table(resid_dat$MORT_1YR_hat,resid_dat$actual,
+                        dnn=list("predicted","Actual"))
+
+confusion_matrix
+```
+
+```{r}
+TP<-confusion_matrix[2,2]
+TN<-confusion_matrix[1,1]
+FP<-confusion_matrix[2,1]
+FN<-confusion_matrix[1,2]
+
+Ture_case<-TP+FN
+False_case<-TN+FP
+
+sensitivity<-TP/Ture_case
+specificity<-TN/False_case
+
+sensitivity
+specificity
+```
+
+```{r}
+pos<-TP+FP
+ppv<-TP/pos
+ppv
+```
+
+
+* Area under reciever operating curve (AUROC, AUC, ROC): 
+
+```{r}
+fit3_roc<-pROC::roc(resid_dat$actual, resid_dat$predicted)
+
+full_roc<-data.frame(cutoff=fit3_roc$thresholds,
+                     sensitivity=fit3_roc$sensitivities,
+                     specificity=fit3_roc$specificities)
+full_roc
+```
+
+
+```{r}
+ggplot(full_roc,aes(y=sensitivity, x=1-specificity))+
+  geom_point(size=2)+ geom_line()+geom_abline(linetype=2)+
+  labs(subtitle = paste0("AUC:",round(fit3_roc$auc,4)))
+```
+

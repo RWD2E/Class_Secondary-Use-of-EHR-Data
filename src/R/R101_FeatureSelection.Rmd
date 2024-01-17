@@ -1,0 +1,252 @@
+---
+title: "Model Selection"
+author: "Xing Song"
+date: "11/08/2022"
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      echo=F,
+                      fig.width=12,
+                      fig.height=10)
+
+#load packages
+pacman::p_load(tidyverse,pROC,leaps)
+
+#load data
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
+  filter(!(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365)) %>%
+  mutate(SEX_F = case_when(SEX=='F' ~ 1,
+                           TRUE ~ 0))
+```
+
+**************************************************************************************************
+**************************************************************************************************
+
+Let's recall the logistic model we built last time to answer the research question:
+
+> What are the risk factors for 1-year mortality among the ALS patients? 
+
+We built one logistic regression model, with only age as the predictor: 
+
+$$ Model 1: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX $$
+
+```{r}
+fit1<-glm(MORT_1YR ~ AGE_AT_ALS1DX, data=aset, family=binomial())
+summary(fit1)
+```
+
+Let's try add in another variable: SEX_F
+
+$$ Model 2: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX + b2*SEX\_F $$
+
+```{r}
+fit2<-glm(MORT_1YR ~ AGE_AT_ALS1DX + SEX_F, data=aset, family=binomial())
+summary(fit2)
+
+anova(fit1,fit2,test="LRT")
+```
+
+What happens if we add `RILUZ_IND` to the model, such that
+
+$$ Model 3: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX + b2*SEX\_F + b3*RILUZ\_IND $$
+
+```{r}
+fit3<-glm(MORT_1YR ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND, data=aset, family=binomial())
+summary(fit3)
+
+anova(fit2,fit3,test="LRT")
+```
+
+Should we keep `SEX_F` and `RILUZ_IND` in the final model, then? Should we add other covariates to the model in order to achieve better performance? There is a systemetic way to `scan` all relavent covariates independently or sequentially, to identify the set of covariates that are more likely to be associate with the outcome than the others. 
+
+
+## Feature Selection
+
+
+### A Filter-based method – Univariate Analysis
+
+* Step 1: Identify the measure of association between outcome and variable/feature of interest.
+
+> recall that our outcome variable `MORT_1YR` is binary, I will chose to use odds ratio as my filtering criteria
+
+
+* Step 2: Calculate the measure for each one of the variable/feature and rank them from the highest to the lowest.
+
+```{r}
+var_to_be_filtered<-c("AGE_AT_ALS1DX ",
+                      "SEX_F",
+                      "RILUZ_IND",
+                      "RILUZ_DUR",
+                      "RACE_black",
+                      "RACE_white",
+                      "RACE_OT",
+                      "RACE_UN")
+
+odds_ratio<-data.frame(variable=as.character(),
+                       odds_ratio=as.numeric(),
+                       p_value=as.numeric())
+
+for (vari in var_to_be_filtered){
+  cat("test variable:",vari,"\n")
+  
+  fit<-glm(as.formula(paste0("MORT_1YR ~",vari)),
+           data=aset,
+           family=binomial()
+           )
+  
+  summ.fit<-summary(fit)
+  
+  odds_ratio<-odds_ratio %>%
+    add_row(variable=vari,
+            odds_ratio=exp(summ.fit$coefficients[2,1]), # note that the coefficient of logistic regression is the log-odds
+            p_value=summ.fit$coefficients[2,4])
+  
+}
+
+odds_ratio<-odds_ratio %>% arrange(p_value)
+odds_ratio
+```
+
+
+* Step 3: Determine number of variables included following certain rule. 
+
+> using a cut-off point of p-value = 0.05, I will select the top three most significant variables (i.e. p < 0.05) to be included in the final model
+
+```{r}
+var_selected<-odds_ratio %>%
+  filter(p_value<=0.05)
+
+var_selected
+```
+
+```{r}
+fit_filter<-glm(MORT_1YR ~ AGE_AT_ALS1DX + RILUZ_DUR, 
+                data = aset, family = binomial())
+summary(fit_filter)
+```
+
+Let's compare this model with one of the previous models, say fit2
+
+```{r}
+# compare their AUC
+anova(fit3,fit_filter,test="LRT")
+```
+
+
+```{r, fig.height=5}
+# compare using ANOVA test for their residuals
+fit3_roc<-pROC::roc(fit3$y, fit3$fitted)
+fit_filter_roc<-pROC::roc(fit_filter$y, fit_filter$fitted)
+pROC::ggroc(list(Model1=fit3_roc,
+                 Model2=fit_filter_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("AUC1:",round(fit3_roc$auc,4),"\n",
+                         "AUC2:",round(fit_filter_roc$auc,4)))
+```
+
+
+### A Wrapper-based Method – Stepwise Regression
+
+* Forward Regression
+
+```{r}
+# Specify a null model with no predictors
+null_model <- glm(MORT_1YR ~ 1, 
+                  data = aset, family = binomial())
+
+# Specify the full model using all of the potential predictors
+full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
+                  data = aset, family = binomial())
+
+# Use a forward stepwise algorithm to build a parsimonious model
+step_model <- step(null_model,
+                   scope = list(lower = null_model, upper = full_model),
+                   direction = "forward")
+```
+
+
+```{r}
+# Estimate the stepwise predictted probability
+fit_forward<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
+                  data = aset, family = binomial())
+
+summary(fit_forward)
+```
+
+* Backward Regression (Recursive Feature Elimination)
+
+```{r}
+# Specify a null model with no predictors
+null_model <- glm(MORT_1YR ~ 1, 
+                  data = aset, family = binomial())
+
+# Specify the full model using all of the potential predictors
+full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
+                  data = aset, family = binomial())
+
+# Use a forward stepwise algorithm to build a parsimonious model
+step_model <- step(full_model,
+                   scope = list(lower = null_model, upper = full_model),
+                   direction = "backward")
+```
+
+
+
+```{r}
+# Estimate the stepwise predictted probability
+fit_backward<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
+                  data = aset, family = binomial())
+```
+
+
+* Bi-directional Stepwise Regression
+
+```{r}
+# Specify a null model with no predictors
+null_model <- glm(MORT_1YR ~ 1, 
+                  data = aset, family = binomial())
+
+# Specify the full model using all of the potential predictors
+full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
+                  data = aset, family = binomial())
+
+# Use a bi-directional stepwise algorithm to build a parsimonious model
+step_model <- step(null_model,
+                   scope = list(lower = null_model, upper = full_model),
+                   direction = "both")
+```
+
+
+
+```{r}
+# Estimate the stepwise predictted probability
+fit_both<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
+              data = aset, family = binomial())
+```
+
+Let's compare this model with fit_filter: 
+
+
+```{r}
+# compare their AUC
+anova(fit_filter,fit_both,test="LRT")
+```
+
+
+```{r}
+# compare using ANOVA test for their residuals
+fit_filter_roc<-pROC::roc(fit_filter$y, fit_filter$fitted)
+fit_both_roc<-pROC::roc(fit_both$y, fit_both$fitted)
+pROC::ggroc(list(Model1=fit_filter_roc,
+                 Model2=fit_both_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("AUC1:",round(fit_filter_roc$auc,4),"\n",
+                         "AUC2:",round(fit_both_roc$auc,4)))
+```
+

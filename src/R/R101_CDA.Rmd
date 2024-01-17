@@ -1,0 +1,111 @@
+---
+title: "Confirmatory Data Analysis "
+author: "Xing Song"
+date: "10/18/2022"
+output: html_document
+---
+
+Preparation: report setup, load packages, load data
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,warning=F,fig.width=6, fig.height=3)
+pacman::p_load(tidyverse,epitools,rcompanion)
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+```
+
+**************************************************************************************************
+
+## Confirmatory Data Analysis (CDA) uses inferential statistics to:
+
+- Evaluate evidence by challenging their assumptions about the data.
+- Produce estimates with a specified level of precision
+- Test Hypotheses about correlations
+- Estimate relationships between variables
+- Evaluate the difference between 
+
+**************************************************************************************************
+
+
+## Categorical Exposure and Categorical Outcome
+
+> Motivating Hypothesis: whether there is a difference of Riluzole use between males and females? 
+
+
+```{r}
+tbl<-table(aset$SEX,aset$RILUZ_IND,dnn=list("SEX","Riluzole"))
+tbl
+```
+
+*Odds Ratio*
+
+Or use existing package, which usually produced more results, such as
+
+*Fisher Exact Test, Mid-p Test, or Chi-Squared test*
+
+```{r}
+epitools::oddsratio(tbl)
+```
+
+*Phi Correlation Coefficients (Matthews correlation coefficients)*
+
+```{r}
+rcompanion::phi(tbl)
+```
+
+*Cramer's V statistics*
+
+```{r}
+rcompanion::cramerV(tbl)
+```
+
+
+## Categorical Exposure and Numerical Outcome
+
+> Motivating Hypothesis: Whether female has a higher likelihood of longer Riluzole usage?
+
+*two-sample t-statistics*
+
+```{r}
+t.test(RILUZ_DUR ~ SEX, data = aset)
+```
+
+```{r}
+t.test(RILUZ_DUR ~ SEX, data = aset, alternative="greater")
+```
+
+*ANOVA*
+
+```{r}
+summary(aov(RILUZ_DUR ~ SEX,data=aset))
+```
+
+*Kruskal-Wallis Test*
+
+```{r}
+kruskal.test(RILUZ_DUR ~ SEX,data=aset)
+```
+
+
+## Numerical Exposure and Numerical Outcome
+
+> Motivating Hypothesis: Whether age at first ALS diagnosis is correlated with Riluzole use exposure? 
+
+*Pearson Correlation Coefficient*
+
+```{r}
+cor.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="pearson")
+```
+
+
+*Spearman Correlation Coefficient*
+
+```{r}
+cor.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="spearman")
+```
+
+*Kolmogorov-Smirnov Tests*
+
+```{r}
+ks.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR)
+```

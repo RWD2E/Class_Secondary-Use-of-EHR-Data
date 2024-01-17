@@ -1,0 +1,292 @@
+---
+title: "Data Preparation and Preprocessing"
+author: "Xing Song"
+date: "10/06/2022"
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes:
+
+```{r setup, include=FALSE}
+#set up rmd print-out style
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      fig.width=6, 
+                      fig.height=3)
+
+#install all the packages for this script
+pacman::p_load(tidyverse,# data cleaning packages
+               finalfit,mice # missing data detection and imputation
+               )
+```
+
+```{r}
+pt_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+riluz_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_riluzole.rda")
+```
+
+## Quantitative and Qualitative Data (11.2.3)
+
+#### Qualitative Data (categorical data)
+
+**nominal data**
+
+```{r nom_data}
+ggplot(pt_tbl,aes(x=RACE))+
+  geom_histogram(stat="count")
+```
+
+**ordinal**
+
+```{r ord_data}
+##==============================================
+# "mutate" function for adding/altering columns
+# "case_when" function
+##==============================================
+#add a new column, "age_group", that groups ages into 5 groups
+pt_tbl_add_agegrp<-pt_tbl %>%
+  mutate(AGEGRP=case_when(AGE_AT_ALS1DX<65~'AgeGrp1',
+                          AGE_AT_ALS1DX>=65&AGE_AT_ALS1DX<70~'AgeGrp2',
+                          AGE_AT_ALS1DX>=70&AGE_AT_ALS1DX<75~'AgeGrp3',
+                          AGE_AT_ALS1DX>=75&AGE_AT_ALS1DX<80~'AgeGrp4',
+                          AGE_AT_ALS1DX>=80~'AgeGrp5'))
+#print first 6 rows
+head(pt_tbl_add_agegrp)
+```
+
+```{r}
+##==============================================
+# "select" function for subsetting columns
+# you can exclude columns by adding a "-" sign
+##==============================================
+pt_tbl_only_agegrp<-pt_tbl_add_agegrp %>%
+  select(PATID,AGEGRP)
+
+ggplot(pt_tbl_only_agegrp,aes(x=AGEGRP))+
+  geom_bar(stat="count")
+```
+
+**********************************                     
+
+#### Quantitative Data (numerical data)
+
+**discrete data**
+
+```{r}
+ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+  geom_histogram(fill="blue",bins = 40)
+```
+
+**continuous data**
+
+```{r}
+ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+  geom_density(fill="blue")
+
+#5-number summary
+summary(pt_tbl$AGE_AT_ALS1DX)
+```
+
+**************************************************************************************************
+**************************************************************************************************
+
+## Data Preprocessing
+
+General steps for data preprocessing are **Data Integration**, **Data Abstraction**, **Data Cleaning**, **Data Transformation** and **Data Reduction**. 
+
+### Data Abstraction
+As you can see, in the `riluzole_tbl`, there are multiple medication entries for the drug riluzole. To get an analytic set with **one patient observation per row**, we need to perform the **data abstraction** step.
+
+```{r}
+##======================================================
+# "group_by" and "summarize" function for summarizing 
+#  variables according to certain grouping criteria and
+#  functions of interests
+##======================================================
+riluz_tbl_dur<-riluz_tbl %>%
+  group_by(PATID) %>%
+  summarize(riluz_begin = min(RX_ORDER_DATE),
+            riluz_end = max(RX_START_DATE),
+            .groups = "drop")
+
+head(riluz_tbl_dur)
+```
+
+
+```{r}
+##=========================================================================================
+# "ymd" and "difftime" functions from "lubridate" package to calculate date difference
+# The "lubridate" package in tidyverse provides functions for operations on dates and times
+# more on: https://cran.r-project.org/web/packages/lubridate/vignettes/lubridate.html
+##=======================================================================================
+riluz_tbl_dur<-riluz_tbl_dur %>%
+  mutate(RILUZ_DUR = difftime(lubridate::ymd(riluz_end), lubridate::ymd(riluz_begin), units = "days")) %>%
+  mutate(RILUZ_DUR = as.numeric(RILUZ_DUR) + 1)
+
+head(riluz_tbl_dur)
+
+riluz_tbl_dur %>%
+  filter(duplicated(PATID))
+```
+
+
+**************************************************************************************************
+**************************************************************************************************
+
+### Data Integration
+
+A good strategy for data integration is to conceptualize what you want your final analytic dataset to look like even before data collection, guided by the following questions:
+* will the final analytic dataset be **one patient per row** or **one encounter per row** or **one particular event per row**?
+* what will be the layout of the final analytic dataset? More specifically, what are the columns in the final analytic dataset? 
+* if repeated measurements exist for a variable, what *data abstraction** step you want to perform on it? 
+
+Let's form a simple analytic dataset with: 
+1. one patient per row;
+2. layout to look like: 
+
+|PATID|SEX|RACE|AGE_AT_ALS1DX|RILUZ_DUR|RILUZ_IND|DAYS_ALS1DX_TO_DEATH|DAYS_ALS1DX_TO_CENSOR|MORT_IND |MORT_1YR |
+|1234 |M  |05  |70           |300      |1        |NA                  |200                  |0        |0        |
+
+```{r}
+##========================================================
+# "left_join" or "inner_join" function to integrate
+# multiple tables together
+##========================================================
+final_set<-pt_tbl %>%
+  left_join(riluz_tbl_dur,by="PATID") %>%
+  mutate(RILUZ_IND = case_when(!is.na(RILUZ_DUR) ~ 1,
+                              TRUE ~ 0),
+         MORT_IND = case_when(!is.na(DAYS_ALS1DX_TO_DEATH) ~ 1,
+                              TRUE ~ 0),
+         MORT_1YR = case_when(DAYS_ALS1DX_TO_DEATH<=365 ~ 1,
+                              is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR<=365 ~ NA_real_,
+                              TRUE ~ 0)) %>%
+  select(PATID,SEX,RACE,AGE_AT_ALS1DX,RILUZ_DUR,RILUZ_IND,DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR,MORT_IND, MORT_1YR)
+
+head(final_set)
+```
+
+
+**************************************************************************************************
+**************************************************************************************************
+
+### Data Cleaning 
+
+#### Check for Data Duplications
+
+```{r}
+##========================================================
+# "group_by" function to collect stratified summaries
+#
+# "arrange" function to order data.frame according 
+#  one/many index columns
+##========================================================
+final_set %>%
+  group_by(PATID) %>% 
+  filter(n()>1) %>%
+  arrange(PATID) %>%
+  ungroup
+```
+
+
+
+```{r}
+##========================================================
+# "group_by"+"filter" to de-duplicate
+##========================================================
+final_set<-final_set %>%
+  group_by(PATID) %>%
+  filter(DAYS_ALS1DX_TO_DEATH == min(DAYS_ALS1DX_TO_DEATH) | is.na(DAYS_ALS1DX_TO_DEATH)) %>%
+  ungroup
+
+final_set %>%
+  group_by(PATID) %>% 
+  filter(n()>1) %>%
+  arrange(PATID) %>%
+  ungroup
+```
+
+
+
+#### Data Cleaning - Missing Data 
+
+```{r}
+##========================================================
+# "finalfit" package provides functions that help you quickly create 
+# elegant final results tables and plots, including an effective
+# way to look at missing patterns
+# 
+# more on: https://finalfit.org/
+##======================================================== 
+explanatory = c("SEX","RACE","AGE_AT_ALS1DX","RILUZ_DUR","RILUZ_IND")
+dependent = 'MORT_IND'
+final_set %>%
+  missing_pattern(dependent,explanatory)
+```
+
+
+```{r}
+##=====================================================
+# "replace_na" function for quick imputation using
+# a constant value
+##=====================================================
+final_set<-final_set %>%
+  replace_na(list(RACE='UN'))
+
+final_set %>%
+  missing_pattern(dependent,explanatory)
+```
+
+
+```{r}
+final_set<-final_set %>%
+  replace_na(list(RILUZ_DUR=0))
+
+final_set %>%
+  missing_pattern(dependent,explanatory)
+```
+
+
+
+### Data Transformation
+
+#### One-hot encoding 
+```{r}
+##=====================================================
+# "spread" function for quick table pivoting
+##=====================================================
+race_ohe<-final_set %>% 
+  select(PATID,RACE) %>%
+  mutate(ind=1) %>%
+  spread(RACE,ind, fill = 0)
+
+head(race_ohe)
+```
+
+```{r}
+##=====================================================
+# "rename" function for modifying column names
+##=====================================================
+race_ohe<-race_ohe %>%
+  rename("RACE_white" = "03",
+         "RACE_black" = "05",
+         "RACE_OT" = "OT",
+         "RACE_UN" = "UN"
+         )
+
+head(race_ohe)
+```
+
+Let's add the numerical representations of one-hot encoded RACE columns, and form the final analytic set:
+
+```{r}
+final_set<-final_set %>%
+  left_join(race_ohe,by="PATID")
+
+head(final_set)
+```
+
+
+```{r}
+saveRDS(final_set,file="C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+```

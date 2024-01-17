@@ -1,0 +1,401 @@
+---
+title: "machine learning - risk stratification modeling"
+author: "Xing Song"
+date: '2022-11-29'
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      echo=F,
+                      fig.width=8,
+                      fig.height=5)
+
+#load packages
+pacman::p_load(tidyverse,
+               pROC,
+               PRROC,
+               # party,
+               rpart,rpart.plot,
+               randomForest)
+```
+
+Load the analytic dataset used previously for the ALS cohort:  
+
+```{r}
+#load data
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
+  mutate(SEX_F = case_when(SEX=='F' ~ 1,
+                           TRUE ~ 0)) %>%
+  filter(!is.na(MORT_1YR)) %>%
+  mutate(RACE = relevel(as.factor(RACE),ref = "05"))
+```
+
+Recall from the "Regression" and "Feature Selection" classes, where we tried to build a multiple logistic regression model to better predict the chances or 1-year mortality. In other words, we want to build a model that can best separate cases with high-risk of passing on within a year vs. those with lower-risk (risk stratification).   
+
+```{r}
+fit_lr<-glm(formula = MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
+            data = aset,
+            family = binomial())
+
+# model summary
+summary(fit_lr)
+
+# AUROC curve
+fit_lr_roc<-pROC::roc(fit_lr$y, fit_lr$fitted)
+pROC::ggroc(list(Model1=fit_lr_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("AUC:",paste(round(ci.auc(fit_lr_roc),4),collapse = ",")))
+
+# optimal sensitivity and specificity
+full_roc<-data.frame(cutoff=fit_lr_roc$thresholds,
+                     sensitivity=fit_lr_roc$sensitivities,
+                     specificity=fit_lr_roc$specificities) %>%
+  mutate(diff1 = abs(sensitivity-specificity),
+         diff2 = sqrt((1-specificity)^2+(1-sensitivity)^2))
+
+# minimize the difference between specificity and sensitivity
+full_roc %>% filter(diff1 == min(diff1))
+
+# minimize the distance between (sensitivity, 1-specificity) to (1,0)
+full_roc %>% filter(diff2 == min(diff2))
+```
+
+
+************************************************************************************
+************************************************************************************
+
+##Decision Tree
+
+Decision tree algorithm falls under the category of supervised learning. They can be used to solve both regression and classification problems. Decision tree uses the tree representation to solve the problem in which each leaf node corresponds to a class label and attributes are represented on the internal node of the tree. In addition, decision tree is one type of "embedded" feature selection model.
+
+Let's first clarify some terms used with decision trees:
+
+* **Root Node**: It represents entire population or sample and this further gets divided into two or more homogeneous sets
+* **Splitting**: It is a process of dividing a node into two or more sub-nodes
+* **Decision/Internal Node**: When a sub-node splits into further sub-nodes, then it is called decision/internal node
+* **Terminal/Leaf Node**: Nodes do not split is called Leaf or Terminal node
+* **Branch/Sub-Tree**: A sub section of entire tree is called branch or sub-tree
+* **Parent and Child Node**: A node, which is divided into sub-nodes is called parent node of sub-nodes where as sub-nodes are the child of parent node
+
+
+```{r tree_model,fig.width=10,fig.height=6}
+fit_tree<-rpart(formula = MORT_1YR ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                data = aset,method="class")
+
+rpart.plot(fit_tree)
+```
+
+-minsplit: Set the minimum number of observations in the node before the algorithm perform a split
+-minbucket:  Set the minimum number of observations in the final note i.e. the leaf
+-maxdepth: Set the maximum depth of any node of the final tree. The root node is treated a depth 0
+-cp: complexity parameter. Any split that does not decrease the overall lack of fit by a factor of cp is not attempted
+
+
+```{r}
+tree_ctrl<-rpart.control(minsplit = 4,
+                         minbucket = 5,
+                         maxdepth = 3,
+                         cp = 0)
+
+fit_tree<-rpart(formula = MORT_1YR ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                data = aset, method = "class",
+                control = tree_ctrl
+                )
+rpart.plot(fit_tree)
+```
+
+Let's compare the prediction result between the LR and Tree model
+
+```{r}
+tree_pred<-matrix(unlist(predict(fit_tree,
+                                 newdata=aset[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                                 type="prob")), nrow=nrow(aset), byrow=T)
+fit_tree_roc<-pROC::roc(aset$MORT_1YR,tree_pred[,2])
+
+pROC::ggroc(list(Regression=fit_lr_roc,
+                 Decision_Tree=fit_tree_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Regression AUC:",paste(round(ci.auc(fit_lr_roc),4),collapse = ","),"\n",
+                         "Decision-Tree AUC:",paste(round(ci.auc(fit_tree_roc),4),collapse = ",")))
+```
+
+************************************************************************************
+************************************************************************************
+
+##Random Forest
+
+Random Forest is **an ensemble** of multiple decision trees. An ensemble is simply a collection of models trained on the same task. An ensemble of different models that all achieve similar generalization performance often outperforms any of the individual models.
+
+- ntree: number of trees to grow
+- mtry: Number of variables randomly sampled as candidates at each split
+- maxnodes: Maximum number of terminal nodes trees in the forest can have
+
+```{r fit_rf}
+aset<-aset %>% mutate(MORT_1YR_fac = as.factor(MORT_1YR))
+
+fit_rf10<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                       data=aset,keep.forest = T, proximity = T, importance=T,
+                       ntree = 10, mtry=0.8)
+
+fit_rf50<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                       data=aset, keep.forest = T, proximity = T, importance=T,
+                       ntree = 50, mtry=0.8)
+
+fit_rf200<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                        data=aset, keep.forest = T, proximity = T, importance=T,
+                        ntree = 200, mtry=0.8)
+```
+
+
+```{r}
+rf10_pred<-predict(fit_rf10,
+                   newdata=aset[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                   type="prob")
+fit_rf10_roc<-pROC::roc(aset$MORT_1YR_fac,rf10_pred[,2])
+#========================================
+
+rf50_pred<-predict(fit_rf50,
+                   newdata=aset[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                   type="prob")
+fit_rf50_roc<-pROC::roc(aset$MORT_1YR_fac,rf50_pred[,2])
+#========================================
+
+rf200_pred<-predict(fit_rf200,
+                    newdata=aset[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                    type="prob")
+fit_rf200_roc<-pROC::roc(aset$MORT_1YR_fac,rf200_pred[,2])
+#========================================
+
+pROC::ggroc(list(Regression=fit_lr_roc,
+                 Decision_Tree=fit_tree_roc,
+                 Random_Forest10=fit_rf10_roc,
+                 Random_Forest50=fit_rf50_roc,
+                 Random_Forest200=fit_rf200_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Regression AUC:",paste(round(ci.auc(fit_lr_roc),4),collapse = ","),"\n",
+                         "Decision-Tree AUC:",paste(round(ci.auc(fit_tree_roc),4),collapse = ","),"\n",
+                         "Random-Forest(10) AUC:",paste(round(ci.auc(fit_rf10_roc),4),collapse = ","),"\n",
+                         "Random-Forest(50) AUC:",paste(round(ci.auc(fit_rf50_roc),4),collapse = ","),"\n",
+                         "Random-Forest(200) AUC:",paste(round(ci.auc(fit_rf200_roc),4),collapse = ",")
+                         ))
+```
+
+####Variable Importance Ranking
+
+```{r,fig.width=8,fig.height=4}
+varImpPlot(fit_rf200)
+```
+
+* Mean Decrease Accuracy: Mean Decrease in Accuracy is the average decrease in accuracy from not including the variable
+    * Mean Decrease in Accuracy can provide low importance to other correlated features if one of them is given high importance       
+    
+* Mean Decrease Gini: Mean Decrease in Gini is the total decrease in node impurities from splitting on the variable, averaged over all trees      
+    * Mean Decrease Gini can be biased towards categorical features which contain many categories       
+
+******************************************************************************************
+******************************************************************************************
+
+##Model Validation
+
+As introduced in the class last time, "validation" is a commonly-adopted approach to fairly evaluate how well your model fit within a research dataset ("internal validation") and generalize to other dataset ("external validation"). In practice, there are several approaches to perform validations:
+
+* Hold-out sets (e.g. 80% training, 20% testing)
+* Leave-one-out
+* k-fold cross validation
+
+In this demonstration, I will show the first approach (Hold-out), while the implementation of the other two approaches can be extended from the first approach.
+
+```{r}
+train_ind<-sample(c(TRUE,FALSE),size=nrow(aset),c(0.7,0.3),replace=T)
+train<-aset[train_ind,]
+test<-aset[!train_ind,]
+```
+
+Let's first use this validation strategy to train and test all the 6 models we just developed.
+
+```{r reg_val}
+fit_reg_tr<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX,
+                data=train,
+                family=binomial())
+
+reg_tr_pred<-predict(fit_reg_tr,
+                     newdata = train[,c('AGE_AT_ALS1DX','RILUZ_IND','RILUZ_DUR')],
+                     type="response")
+fit_reg_tr_roc<-pROC::roc(train$MORT_1YR,reg_tr_pred)
+
+reg_ts_pred<-predict(fit_reg_tr,
+                     newdata = test[,c('AGE_AT_ALS1DX','RILUZ_IND','RILUZ_DUR')],
+                     type="response")
+fit_reg_ts_roc<-pROC::roc(test$MORT_1YR,reg_ts_pred)
+
+#========================================
+
+pROC::ggroc(list(Regression_tr=fit_reg_tr_roc,
+                 Regression_ts=fit_reg_ts_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Regression Training AUC:",round(fit_reg_tr_roc$auc,4),"\n",
+                         "Regression Testing AUC:",round(fit_reg_ts_roc$auc,4),"\n"
+                         ))
+```
+
+
+####Overfitting
+
+* Problem when using large number of variables and few samples        
+* Model seems correct because training set classified properly, but when used with independent data, model performs poorly           
+* This is one reason simpler models are preferred             
+
+
+```{r tree_val}
+fit_tree<-rpart(formula = MORT_1YR ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                data = train, method = "class"
+                )
+# rpart.plot(fit_tree)
+
+tree_tr_pred<-matrix(unlist(predict(fit_tree,
+                                    newdata=train[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                                    type="prob")), nrow=nrow(train), byrow=T)
+
+tree_ts_pred<-matrix(unlist(predict(fit_tree,
+                                    newdata=test[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                                    type="prob")), nrow=nrow(test), byrow=T)
+
+fit_tree_tr_roc<-pROC::roc(train$MORT_1YR,tree_tr_pred[,2])
+fit_tree_ts_roc<-pROC::roc(test$MORT_1YR,tree_ts_pred[,2])
+
+pROC::ggroc(list(Decision_Tree_tr=fit_tree_tr_roc,
+                 Decision_Tree_ts=fit_tree_ts_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Decision Tree Training AUC:",round(fit_tree_tr_roc$auc,4),"\n",
+                         "Decision Tree Testing AUC:",round(fit_tree_ts_roc$auc,4)))
+
+```
+
+
+```{r rf_val}
+fit_rf10<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                     data=train,ntree = 10, mtry=0.8, keep.forest = T, proximity = T, importance=T)
+rf10_pred_tr<-predict(fit_rf10,
+                      newdata=train[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+rf10_pred_ts<-predict(fit_rf10,
+                      newdata=test[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+
+fit_rf10_tr_roc<-pROC::roc(train$MORT_1YR_fac,rf10_pred_tr[,2])
+fit_rf10_ts_roc<-pROC::roc(test$MORT_1YR_fac,rf10_pred_ts[,2])
+#=================================================
+
+fit_rf50<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                     data=train,ntree = 50, mtry=0.8, keep.forest = T, proximity = T, importance=T)
+rf50_pred_tr<-predict(fit_rf50,
+                      newdata=train[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+rf50_pred_ts<-predict(fit_rf50,
+                      newdata=test[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+
+fit_rf50_tr_roc<-pROC::roc(train$MORT_1YR_fac,rf50_pred_tr[,2])
+fit_rf50_ts_roc<-pROC::roc(test$MORT_1YR_fac,rf50_pred_ts[,2])
+#=================================================
+
+fit_rf200<-randomForest(MORT_1YR_fac ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND + RILUZ_DUR + RACE, 
+                     data=train,ntree = 200, mtry=0.8, keep.forest = T, proximity = T, importance=T)
+rf200_pred_tr<-predict(fit_rf200,
+                      newdata=train[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+rf200_pred_ts<-predict(fit_rf200,
+                      newdata=test[,c('AGE_AT_ALS1DX','SEX_F','RILUZ_IND','RILUZ_DUR','RACE')],
+                      type="prob")
+
+fit_rf200_tr_roc<-pROC::roc(train$MORT_1YR_fac,rf200_pred_tr[,2])
+fit_rf200_ts_roc<-pROC::roc(test$MORT_1YR_fac,rf200_pred_ts[,2])
+#=================================================
+
+pROC::ggroc(list(Random_Forest10_tr=fit_rf10_tr_roc,
+                 Random_Forest10_ts=fit_rf10_ts_roc,
+                 Random_Forest50_tr=fit_rf50_tr_roc,
+                 Random_Forest50_ts=fit_rf50_ts_roc,
+                 Random_Forest200_tr=fit_rf200_tr_roc,
+                 Random_Forest200_ts=fit_rf200_ts_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Random-Forest(10) Training AUC:",round(fit_rf10_tr_roc$auc,4),"\n",
+                         "Random-Forest(10) Testing AUC:",round(fit_rf10_ts_roc$auc,4),"\n",
+                         "Random-Forest(50) Training AUC:",round(fit_rf50_tr_roc$auc,4),"\n",
+                         "Random-Forest(50) Testing AUC:",round(fit_rf50_ts_roc$auc,4),"\n",
+                         "Random-Forest(200) Training AUC:",round(fit_rf200_tr_roc$auc,4),"\n",
+                         "Random-Forest(200) Testing AUC:",round(fit_rf200_ts_roc$auc,4)
+                         ))
+```
+
+
+************************************************************************************
+************************************************************************************
+
+Now, let's compare the testing/validation results among the 6 models:
+
+```{r}
+pROC::ggroc(list(Regression=fit_reg_ts_roc,
+                 Decision_Tree=fit_tree_ts_roc,
+                 Random_Forest10=fit_rf10_ts_roc,
+                 Random_Forest50=fit_rf50_ts_roc,
+                 Random_Forest200=fit_rf200_ts_roc))+
+  geom_abline(intercept=1,linetype=2)+
+  labs(subtitle = paste0("Regression Testing AUC:",round(fit_reg_ts_roc$auc,4),"\n",
+                         "Decision-Tree Testing AUC:",round(fit_tree_ts_roc$auc,4),"\n",
+                         "Random-Forest(10) Testing AUC:",round(fit_rf10_ts_roc$auc,4),"\n",
+                         "Random-Forest(50) Testing AUC:",round(fit_rf50_ts_roc$auc,4),"\n",
+                         "Random-Forest(200) Testing AUC:",round(fit_rf200_ts_roc$auc,4)
+                         ))
+```
+
+How about calibration? 
+
+```{r}
+# source: https://github.com/sxinger/utils/blob/master/analysis_util.R
+get_calibr<-function(pred,real,n_bin=20){
+  calib<-data.frame(pred=pred,
+                    y=real) %>%
+    arrange(pred) %>%
+    dplyr::mutate(pred_bin = cut(pred,
+                                 breaks=unique(quantile(pred,0:(n_bin)/(n_bin))),
+                                 include.lowest=T,
+                                 labels=F)) %>%
+    ungroup %>% group_by(pred_bin) %>%
+    dplyr::summarize(expos=n(),
+                     bin_lower=min(pred),
+                     bin_upper=max(pred),
+                     bin_mid=median(pred),
+                     y_agg = sum(y),
+                     pred_p = mean(pred),
+                     .groups = "drop") %>%
+    dplyr::mutate(y_p=y_agg/expos) %>%
+    dplyr::mutate(binCI_lower = pmax(0,pred_p-1.96*sqrt(y_p*(1-y_p)/expos)),
+                  binCI_upper = pred_p+1.96*sqrt(y_p*(1-y_p)/expos))
+  
+  return(calib)
+}
+```
+
+
+```{r}
+# assume there is no row reordering
+fit_reg_calib<-get_calibr(pred=reg_ts_pred,real=test$MORT_1YR,n_bin=10) %>% mutate(model="regression")
+fit_tree_calib<-get_calibr(pred=tree_ts_pred[,2],real=test$MORT_1YR,n_bin=10) %>% mutate(model="tree")
+fit_rf_calib<-get_calibr(pred=rf200_pred_ts[,2],real=test$MORT_1YR,n_bin=10) %>% mutate(model="rf")
+
+calib_df<-fit_reg_calib %>%
+  bind_rows(fit_tree_calib) %>%
+  bind_rows(fit_rf_calib)
+
+ggplot(calib_df,aes(x=pred_p,y=y_p,color=model))+
+  geom_point() +
+  geom_smooth(method='lm',formula='y~x')+
+  geom_abline(intercept = 0, slope = 1)
+  
+```

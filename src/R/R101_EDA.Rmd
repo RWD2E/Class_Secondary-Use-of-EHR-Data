@@ -1,0 +1,286 @@
+---
+title: "Exploratory Data Analysis "
+author: "Xing Song"
+date: "10/18/2022"
+output: html_document
+---
+
+Preparation: report setup, load packages, load data
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,warning=F,fig.width=6, fig.height=3)
+pacman::p_load(tidyverse,
+               kableExtra)
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+```
+
+
+**************************************************************************************************
+
+## Exploratory Data Analysis (EDA)
+
+EDA:  refers to a set of procedures for producing descriptive and graphical summary of the data. The term is developed by John Tukey: “The best single device for suggesting, and at times answering questions beyond those originally posed is the graphical display”. The primary aim of EDA is to:
+
+* **Maximize insight** into the database/understand the database structure
+* **Visualize potential relationships** (direction and magnitude) between exposure and outcome variables
+* **Detect outliers and anomalies** (values that are significantly different from the other observations)
+* **Extract and create clinically** relevant variables.
+
+**************************************************************************************************
+
+### Categorical Data/Variables 
+```{r}
+aset<-aset %>%
+  mutate(AGEGRP=case_when(AGE_AT_ALS1DX<65~'AgeGrp1',
+                          AGE_AT_ALS1DX>=65&AGE_AT_ALS1DX<70~'AgeGrp2',
+                          AGE_AT_ALS1DX>=70&AGE_AT_ALS1DX<75~'AgeGrp3',
+                          AGE_AT_ALS1DX>=75&AGE_AT_ALS1DX<80~'AgeGrp4',
+                          TRUE ~'AgeGrp5'))
+
+head(aset)
+```
+#### Univariate EDA
+
+##### Non-Graphical Methods
+
+*Tabulation, or Frequency table*
+    
+```{r}
+##==============================================
+# use "table","prop.table" function 
+# for quick check
+##==============================================
+table(aset$RACE,dnn=list("freq"))
+prop.table(table(aset$RACE,dnn=list("rel_freq")))
+```
+
+
+```{r}
+##==============================================
+# use "kable" function for nicer print-out
+##==============================================
+uni_freq_tbl<- aset %>%
+  group_by(RACE) %>%
+  summarise(freq=n()) %>% 
+  ungroup %>%
+  mutate(rel_freq=round(freq/1373,4))
+
+kable(uni_freq_tbl,
+      col.names = c("RACE","Frequency","Relative Frequency(%)"),
+      caption="Frequency Table of Racial Groups")
+```
+
+
+#### Graphical Methods
+
+*Barplot*
+
+```{r}
+# example for nominal data
+ggplot(data=aset,aes(x=RACE)) +
+  geom_bar()
+```
+
+
+```{r}
+# example for ordinal data
+ggplot(data=aset,aes(x=AGEGRP)) +
+  geom_bar()
+```
+
+
+*Pie chart*
+  
+```{r}
+ggplot(aset %>% group_by(RACE) %>%
+         dplyr::summarize(freq=n()) %>% ungroup, 
+       aes(x="",y=freq,fill=RACE)) +
+  geom_bar(width=1,stat="identity")+
+  coord_polar("y", start=0)+
+  labs(x="",y="")
+```
+
+
+*************************************************************************************
+
+#### Multivariate EDA
+
+##### Non-Graphical Method
+
+*Cross tabulation, or Contingency table, or Frequency table*
+    
+```{r}
+bivar_freq_tbl<-table(aset$RACE,aset$AGEGRP,
+      dnn=list("RACE","AGEGRP"))
+
+bivar_freq_tbl
+```
+
+```{r}
+prop.table(bivar_freq_tbl)
+```
+
+```{r}
+# row proportions
+prop.table(bivar_freq_tbl,margin=1)
+```
+
+```{r}
+# column proportions
+prop.table(bivar_freq_tbl,margin=2)
+```
+
+
+##### Graphical Method
+
+*Conditional Barplot*
+
+```{r}
+ggplot(data=aset,aes(x=RACE,fill=AGEGRP)) +
+  geom_bar(position="dodge")
+```
+
+*Heatmap*
+
+```{r heat_race_dx}
+ggplot(aset %>% group_by(RACE,AGEGRP) %>%
+         dplyr::summarize(freq=n()) %>% ungroup, 
+       aes(x=AGEGRP,y=RACE,fill=freq))+
+  geom_tile(colour = "white") + 
+  scale_fill_gradient(low = "lightblue",high = "steelblue") + 
+  theme_classic()
+
+```
+
+**************************************************************************************************
+
+### Numerical Data/Variables
+
+#### Univariate EDA
+
+##### Non-Graphical Method
+
+*Descriptive Statistics*
+    
+a) Central Tendency: mean, median, mode
+        
+```{r}
+#mean
+mean(aset$AGE_AT_ALS1DX)
+#median
+median(aset$AGE_AT_ALS1DX)
+#mode
+aset %>% 
+  group_by(RACE) %>% 
+  summarise(n=n()) %>% 
+  slice(which.max(n))
+```
+
+b) Spread: min, max, variance, standard deviation (sd), interquartile range (IQR)
+        
+```{r}
+#range
+max(aset$AGE_AT_ALS1DX)-min(aset$AGE_AT_ALS1DX)
+
+#variance
+var(aset$AGE_AT_ALS1DX)
+
+#sd
+sd(aset$AGE_AT_ALS1DX)
+
+#IQR
+IQR(aset$AGE_AT_ALS1DX)
+
+#5-number summary
+summary(aset$AGE_AT_ALS1DX)
+```
+
+c) Shape: skewness (normal distribution is near 0), kurtosis (normal distribution is around 3)
+```{r}
+pacman::p_load("moments")
+
+# skewness
+skewness(aset$AGE_AT_ALS1DX)
+
+# kurtosis
+kurtosis(aset$AGE_AT_ALS1DX)
+
+```
+
+##### Graphical Method
+
+*Histogram, Density plot*
+    
+```{r}
+#histogram
+ggplot(aset,aes(AGE_AT_ALS1DX))+
+  geom_histogram(bins = 30)
+
+#density plot
+ggplot(aset,aes(AGE_AT_ALS1DX))+
+  geom_density(bins = 30)
+```
+
+*Boxplot*
+```{r}
+#vertical
+ggplot(aset,aes(y=AGE_AT_ALS1DX))+
+  geom_boxplot(bins = 30)
+
+#horizontal
+ggplot(aset,aes(x=AGE_AT_ALS1DX))+
+  geom_boxplot(bins = 30)
+```
+
+
+#### Multivariate EDA
+
+##### Non-Graphical Method
+
+*Pearson Correlation*
+        
+* The closer it is to 1, the more linearly related
+* positive sign suggests positive correlation
+          
+```{r}
+cor(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="pearson")
+```
+
+*Spearman Correlation*
+```{r}
+cor(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="spearman")
+```
+
+
+##### Graphical Method
+
+*Scatter Plot*
+
+```{r}
+ggplot(aset, aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+  geom_point()+
+  geom_smooth(method="loess",formula='y ~ x')
+```
+
+
+#### Mixture Data
+
+##### Non-Graphical Method
+
+*ANOVA*
+
+```{r}
+fit_aov<-aov(AGE_AT_ALS1DX ~ SEX, data=aset)
+summary(fit_aov)
+```
+
+##### Graphical Method
+
+*Conditional Boxplot*
+
+```{r bmi_boxplot}
+#vertical boxplot
+ggplot(aset,aes(y=AGE_AT_ALS1DX,fill=SEX))+
+  geom_boxplot()
+```

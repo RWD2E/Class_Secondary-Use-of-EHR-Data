@@ -1,0 +1,599 @@
+---
+title: "Data Preparation and Preprocessing"
+author: "Xing Song"
+date: "10/06/2022"
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes:
+
+```{r setup, include=FALSE}
+#set up rmd print-out style
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      fig.width=6, 
+                      fig.height=3)
+
+#install all the packages for this script
+pacman::p_load(tidyverse,# data cleaning packages
+               dbplyr, # R function interfacing with SQL db
+               mice # missing data detection and imputation
+               )
+```
+
+```{r}
+pt_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+riluz_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_riluzole.rda")
+```
+
+## Quantitative and Qualitative Data (11.2.3)
+
+#### Qualitative Data (categorical data)
+
+**nominal data**
+
+```{r nom_data}
+ggplot(pt_tbl,aes(x=RACE))+
+  geom_histogram(stat="count")
+```
+
+**ordinal**
+
+```{r ord_data}
+##==============================================
+# "mutate" function for adding/altering columns
+# "case_when" function
+##==============================================
+
+#add a new column, "age_group", that groups ages into 5 groups
+pt_tbl_add_agegrp<-pt_tbl %>%
+  mutate(age_group=case_when(AGE_AT_ALS1DX<65~'Group1',
+                             AGE_AT_ALS1DX>=65&AGE_AT_ALS1DX<70~'Group2',
+                             AGE_AT_ALS1DX>=70&AGE_AT_ALS1DX<75~'Group3',
+                             AGE_AT_ALS1DX>=75&AGE_AT_ALS1DX<80~'Group4',
+                             AGE_AT_ALS1DX>=80~'Group5'))
+#print first 6 rows
+head(pt_tbl_add_agegrp)
+
+#plot out the age group
+ggplot(pt_tbl_add_agegrp,aes(x=age_group))+
+  geom_bar(stat="count")
+```
+
+
+
+**********************************                     
+
+#### Quantitative Data (numerical data)
+
+**discrete data**
+
+```{r cont_dat}
+ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+  geom_histogram(fill="blue",bins = 40)
+
+#5-number summary
+table(pt_tbl$AGE_AT_ALS1DX)
+```
+
+**continuous data**
+
+```{r cont_dat}
+ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+  geom_density(fill="blue")
+
+#5-number summary
+summary(pt_tbl$AGE_AT_ALS1DX)
+```
+
+**************************************************************************************************
+**************************************************************************************************
+
+## Data Preprocessing
+
+General steps for data preprocessing are **Data Integration**, **Data Abstraction**, **Data Cleaning**, **Data Transformation** and **Data Reduction**. 
+
+### Data Abstraction
+As you can see, in the `riluzole_tbl`, there are multiple medication entries for the drug riluzole. To get an analytic set with **one patient observation per row**, we need to perform the **data abstraction** step.
+
+```{r}
+##======================================================
+# "group_by" and "summarize" function for summarizing 
+#  variables according to certain grouping criteria and
+#  functions of interests
+##======================================================
+riluz_tbl_dur<-riluz_tbl %>%
+  group_by(PATID) %>%
+  summarize(riluz_begin = min(START_DATE),
+            riluz_end = max(START_DATE),
+            .groups = "drop")
+```
+
+
+```{r}
+##=====================================================
+# "sampl_n" function for randomly sampling n rows 
+##=====================================================
+asd_down_bmi_median %>% sample_n(5)
+```
+
+**************************************************************************************************
+**************************************************************************************************
+
+### Data Integration
+* A process of combining data derived from various data sources (e.g. databases, flat files, tables) into a consistent dataset
+* One example as we have exercised in SQL is for you to create mini-tables for a subset of variables and then join them together to form the final **analytical dataset**
+* Data integration can be accomplished in SQL database, or deferred to the analysis step in R. 
+
+
+**************************************************************************************************
+**************************************************************************************************
+
+
+
+### Data Cleaning 
+Real world data are usually "messy" due to a variety of reasons:
+* random technical issues with biomonitors
+* human errors in entry
+* clinical variables are not consistently collected since EHR were collected for non-study purposes
+    * adverse events may be recorded particularly for certain study, but not regularly recorded as a routine check; clinical locations may be a key factor affecting.  
+* missing information due to patients seeking care in other facility
+    * even within the same facility, the frequencies of seeing the patients can be highly variable
+    * different flowsheet documentations across different clinics
+...
+
+**************************************************************************************************
+
+#### Data Cleaning - Outlier, Obvious Inconsistencies (Chapter 14)
+
+Obvious Inconsistencies: occur when a record contains a value or combination of values that cannot correspond to a real-world situation
+
+Outliers: also called abnormalities, discordants, deviants, and anomalies, are a data point which is difference from the remaining data. Outliers not only include errors but also dicordant data that arises from natural variation, which may carry interesting information (e.g. fraud detection). 
+
+```{r bmi_density}
+# a density plot of bmi for all patients
+ggplot(asd_down_bmi_median,aes(x=bmi_median))+
+  geom_density(fill="blue",alpha=0.5)
+
+# a boxplot (box-and-whisker plot) for bmi of all patients
+ggplot(asd_down_bmi_median,aes(y=bmi_median))+
+  geom_boxplot(aes(fill="blue"),alpha=0.5)
+
+# a density plot of bmi for all patients stratified by diagnosis groups
+ggplot(asd_down_bmi_median,aes(x=bmi_median))+
+  geom_density(aes(fill=DIAGNOSIS),alpha=0.5)
+
+# a boxplot (box-and-whisker plot) 
+ggplot(asd_down_bmi_median,aes(y=bmi_median))+
+  geom_boxplot(aes(fill=DIAGNOSIS),alpha=0.5)
+```
+
+**************************************************************************************************
+
+The following are several basic methods to identify outliers:
+
+* Tukey's Method: [Q1-1.5IQR, Q3+1.5IQR], where Q1 is the first quartile, Q3 is the 3rd quartile, and IQR is the interquartile range (IQR = Q3-Q1)
+    * Assumption: the underlying distribution is not too skewed 
+    * Transformations can be help reshape the distribution to satisfy the assumption
+
+```{r outlier_tukey}
+##=====================================================
+# "mutate" function for adding new column or updating an
+# existing column
+##=====================================================
+asd_down_bmi_trans<-asd_down_bmi_median %>%
+  mutate(bmi_median_log=log(bmi_median) # log transformation
+         )
+```
+
+
+```{r, fig.width=12}
+ggplot(asd_down_bmi_trans %>%
+         select(PATIENT_NUM,DIAGNOSIS,bmi_median,bmi_median_log) %>%
+         gather(bmi_type,bmi_value,-PATIENT_NUM,-DIAGNOSIS),
+       aes(y=bmi_value))+
+  geom_boxplot()+
+  facet_wrap(~bmi_type,scales="free",nrow=1)
+```
+
+
+* Z-score: z = (x-m)/s, where m is the mean and s is the sample standard deviation. It computes the number of standard deviations away from the mean. A rule of thumb for identifying outliers is |z| >= 3
+    * Assumption: the underlying distribution is likely to be normal
+    * Transformations can be help reshape the distribution to satisfy the assumption
+
+```{r}
+bmi_med_m<-mean(asd_down_bmi_median$bmi_median,na.rm=T)
+bmi_med_sd<-sd(asd_down_bmi_median$bmi_median,na.rm=T)
+
+asd_down_bmi_z<-asd_down_bmi_median %>% 
+  mutate(bmi_z=(bmi_median-bmi_med_m)/bmi_med_sd)
+
+ggplot(asd_down_bmi_z,aes(x=bmi_z))+
+  geom_density(aes(fill=DIAGNOSIS),alpha=0.4)+
+  geom_dotplot(size=2,alpha=0.2)+
+  geom_vline(xintercept = 3,linetype=2)
+```
+
+
+* Cook's Distance: in linear regression, cook's distance is commonly used to estimate the influence of a data point on the coefficients ("Influence Diagnostic"). 
+    * It measures the average effects of deleting a given observation
+    * The higher the Cook's distance is, the more influential a point will be
+    * Some commonly-used cut-off values are: 0.5, 1, 4/(N-k-1) (N: total number of observations)
+    * Steps to compute Cook’s distance:
+        * delete observations one at a time
+        * refit the regression model on remaining (n−1) observations
+        * examine how much all of the fitted values change when the ith observation is deleted.
+
+```{r cook_dist}
+data_fit<-asd_down_bmi_median %>%
+  filter(!is.na(bmi_median)) %>%
+  select(PATIENT_NUM,bmi_median,AGE_AT_FIRSTDX,DIAGNOSIS,RACE,SEX)
+
+fit<-glm(bmi_median ~ 1, data=data_fit,family="Gamma")
+cooks_d<-cooks.distance(fit)
+dat_cooksd<-data_fit %>% 
+         mutate(cooksd=cooks_d,pat_idx=rank(PATIENT_NUM),
+                label1=case_when(cooks_d >= 0.1 ~ as.character(PATIENT_NUM),
+                                 TRUE ~ NA_character_),
+                label2=case_when(cooks_d >= 0.1 ~ bmi_median,
+                                 TRUE ~ NA_real_))
+
+ggplot(dat_cooksd,aes(x=pat_idx,y=cooksd))+
+  geom_line()+
+  geom_label(aes(label=label1))+
+  geom_hline(yintercept = 0.1,linetype=2,color="blue")+
+  labs(x="BMI",y="Cook's D")
+
+ggplot(dat_cooksd, aes(x=bmi_median,y=cooksd))+
+  geom_point()+
+  geom_text(aes(label=label2),color="red")+
+  geom_hline(yintercept = 0.1,linetype=2,color="blue")+
+  labs(x="BMI",y="Cook's D")
+  
+```
+
+##### Dealing With Outliers
+
+**Deletion**: delete the “influential” observations that are obviously “outlier” or “inconsistent”. Can be treated as “missing” data later
+
+**Correction**: correct the observations that are obviously “outlier” or “inconsistent” with values following certain rules or using imputation.
+
+**Transformation**: discretize numerical values into bins can help relieve the effect from extreme values  
+
+
+```{r outlier_correct}
+##=====================================================
+# "case_when" function for performing multiple "if else" 
+# type of conditional statements
+##=====================================================
+asd_down_bmi_median<-asd_down_bmi_median %>%
+  left_join(dat_cooksd %>% select(PATIENT_NUM,cooksd),by="PATIENT_NUM") %>%
+  mutate(bmi_median_corr=case_when(cooksd < 0.1 ~ bmi_median,
+                                   TRUE ~ NA_real_)) 
+
+# show the top 5 largest BMI
+asd_down_bmi_median %>%
+  select(PATIENT_NUM,bmi_median,bmi_median_corr) %>%
+  arrange(desc(bmi_median)) %>%
+  slice(1:5)
+```
+
+
+**************************************************************************************************
+
+**Take Home Messages**
+
+  * Distinguishing outliers as useful or uninformative is not clear cut
+  * In certain contexts, outliers may represent extremely valuable information that must not be discarded.      
+  * Various methods exist and will identify possible or likely outliers, but the expert eye must prevail before deleting or correcting outliers.
+
+**************************************************************************************************
+
+#### Data Cleaning - Missing Data (Chapter 13)
+To deal with missing data, the first step is to identify the **source** of "missingness":
+i. the value could be missing because **it was forgotton or lost** (e.g. disconnection of sensors, errors in communications across different databases, human errors, etc.);
+ii. the value could be missing because **it was not applicable to the instance** (e.g. a patient is diconnected from the ventilator because of a medical decision);
+iii. the value could be missing because **it was of no interst to the instance**
+
+**************************************************************************************************
+
+##### Type of Missing
+Understanding the source of "missingness" will help determine if the "missingness" is recoverable. In general, there are three types of "missingness":  
+
+**Missing Completely at Randm (MCAR)** - the probability of an observation being missing depends only on itself (e.g. disconnection of sensors, human errors);
+
+**Missing at Random (MAR)** -  the probablity of a value being missing is related only to some observable data (e.g. lab is only taken due to certain diagnosis);    
+
+**Missing Not at Random (MNAR)** - the probablity of a value being missing is related to both observable data and unobservable data (e.g. patients with low blood pressure are more likely to have their blood pressure measured less frequently);
+
+"Missingness" sometimes may just suggest not presenting with certain condition (e.g. missing diagnosis code for cardiovascular disease may just suggest someone doesn't have the condition)
+
+**************************************************************************************************
+
+##### Patterns of Missing
+
+Let's use the `aggr` function from `VIM` package to explore the missing pattern:
+
+```{r plot_missing}
+asd_down_bmi_median<-asd_down_bmi_median %>%
+  mutate(bmi_median=bmi_median_corr) %>%
+  select(-cooksd,-bmi_median_corr)
+
+# calculate missing proportion
+sum(is.na(asd_down_bmi_median$bmi_median))/nrow(asd_down_bmi_median)
+
+# visualize missing patterns
+asd_down_bmi_median2<-asd_down_bmi_median
+colnames(asd_down_bmi_median2)<-c("PAT_NUM","SEX","RACE","AGE","DX","BMI")
+VIM::aggr(asd_down_bmi_median2,prop =TRUE, plot = TRUE)
+```
+
+
+***************************************************************************************************
+
+
+##### Dealing with Missing
+
+**Deletion**
+
+* Listwise deletion (complete-case analysis): all the observations with at least one missing variable are
+discarded;         
+
+* Pairwise deletion (available-case analysis): only discard the observations with at least one missing among the necessary variables required for specific study
+
+
+```{r del_na}
+# since the missing rate is quite low, we decided to "delete" incomplete records
+asd_down_bmi_median_del_na<-asd_down_bmi_median %>% 
+  filter(!is.na(bmi_median))
+```
+
+
+**************************************************************************************************
+
+**Imputation**
+
+* Single value imputation: missing values are filled by some type of "predicted" values.
+    * Mean and Median for numerical variables (can also stratified by demographics)
+    * Mode for categorical variables (can also stratified by demographics)
+    * Linear Interpolation (time series)
+    * Last Observation Carried Forward (pr "sample-and-hold")
+
+```{r impute_simple}
+##=====================================================
+# "replace_na" function for quick imputation using
+# a constant value
+##=====================================================
+bmi_pop_median<-median(asd_down_bmi_median$bmi_median,na.rm=T)
+asd_down_bmi_median_imp1<-asd_down_bmi_median %>%
+  replace_na(list(bmi_median=bmi_pop_median))
+```
+
+
+* Model based imputation: K-Nearest Neighbors
+    * identify k complete cases who are most similar to the missing case
+    * impute with their mean
+    * choice of k is very critical, which requires sensitivity analysis
+
+```{r impute_knn}
+##========================================================
+# "left_join" function to join the imputed data.frame back
+##========================================================
+bmi_knn_imputed<-VIM::kNN(asd_down_bmi_median)
+asd_down_bmi_median_imp2<-asd_down_bmi_median %>% select(-bmi_median) %>%
+  left_join(bmi_knn_imputed %>% select(PATIENT_NUM,bmi_median),
+            by="PATIENT_NUM")
+```
+
+* Model based imputation: Linear Regression (regress the missing variable against observable variables)
+* Model based imputation: Multiple-Value Imputation Chain Equation (MICE)
+    * resampling M times (M ~ 5 - 10)
+    * for each resample, do imputation using the same method
+    * collect results for the M analyses
+    * calculate mean and CI
+
+```{r impute_mice}
+bmi_mice<-mice(asd_down_bmi_median[,c("AGE_AT_FIRSTDX","bmi_median")], m=2, maxit = 50, method = 'pmm', seed = 500, printFlag=F)
+bmi_mice_imputed<-bmi_mice$imp$bmi_median
+asd_down_bmi_median_imp3<-asd_down_bmi_median %>%
+  mutate(bmi_median_orig=bmi_median,
+         bmi_median1=complete(bmi_mice,1)$bmi_median,
+         bmi_median2=complete(bmi_mice,2)$bmi_median) %>%
+  mutate(bmi_median=(bmi_median1+bmi_median2)/2)
+
+asd_down_bmi_median_imp3 %>% 
+  filter(is.na(bmi_median_orig)) %>%
+  sample_n(5) %>% 
+  select(PATIENT_NUM,bmi_median_orig,bmi_median1,bmi_median2,bmi_median)
+```
+
+
+
+```{r}
+##========================================================
+# "bind_rows" function to stack data.frames
+##========================================================
+multi_impute<-asd_down_bmi_median_imp1 %>% mutate(impute='simple') %>%
+  bind_rows(asd_down_bmi_median_imp2 %>% mutate(impute='kNN')) %>%
+  bind_rows(asd_down_bmi_median_imp3 %>% select(-bmi_median_orig,-bmi_median1,-bmi_median2) %>% mutate(impute='MICE'))
+
+ggplot(multi_impute,aes(x=bmi_median))+
+  geom_density()+
+  facet_wrap(~impute)
+```
+
+
+**************************************************************************************************
+
+**Take Home Messages**
+
+* Always evaluate the reasons for missingness: is it MCAR/MAR/MNAR?
+* What is the proportion of missing data per variable and per record?
+* Multiple imputation approaches generally perform better than other methods.
+    * Choice of the best imputation method
+        * Make clinical sense in the study context
+        * Select the approach providing the best accuracy
+          
+
+**************************************************************************************************
+**************************************************************************************************
+
+### Data Transformation
+
+The aim of data transformation is to transform the data values into a format, scale or unit that is more suitable for analysis
+
+**************************************************************************************************
+
+#### Encoding Categorical Data
+
+Since what will be eventually fed into any statistical test or analysis model should be numerical values, it is essential to transform categorical data into a numerical representations, i.e. a set of indicators for each category, which is called "one-hot-encoding"
+
+For example, in our example, the sex and race are categorical variables, which we would want to perform one-hot encoding on:
+
+```{r encode_sex}
+sex_ohe<-asd_down_bmi_median %>% 
+  dplyr::select(PATIENT_NUM,SEX) %>%
+  mutate(sex_f_ind=case_when(SEX =="f" ~ 1,
+                             TRUE ~ 0)) %>%
+  select(-SEX)
+
+head(sex_ohe)
+```
+
+
+```{r encode_race}
+# perform one-hot-encoding again with the grouped categories
+race_ohe<-asd_down_bmi_median %>% 
+  dplyr::select(PATIENT_NUM,RACE) %>%
+  mutate(ind=1) %>%
+  spread(RACE,ind, fill = 0)
+
+head(race_ohe)
+```
+
+**************************************************************************************************
+
+#### Discretizing Numerical Data
+
+Sometimes, it is a good strategy to **discretize** numerical data into value groups ("Binning"). For example, instead of using BMI values, we may want to categorize them into weight groups. This could help improve interpretability of your model, control overfitting, and remove outliers.
+
+This is the same exercise as we did in our SQL Homework:
+
+```{r}
+bmi_cat<-asd_down_bmi_median %>% 
+  dplyr::select(PATIENT_NUM,DIAGNOSIS, bmi_median) %>%
+  mutate(bmi_classify = case_when(bmi_median < 18.5 ~ 'under',
+                                  bmi_median < 25 ~ 'normal',
+                                  bmi_median < 30 ~ 'over',
+                                  bmi_median >= 30 ~ 'obese'))
+
+bmi_cat %>% sample_n(5)
+```
+
+
+**************************************************************************************************
+
+#### Power Transformation
+
+A common technique used to stabilize variance for numerical data, make the data more normal-distribution-like
+
+```{r bmi_transform, fig.width=10, fig.height=6}
+asd_down_bmi_trans<-asd_down_bmi_median %>% mutate(trans_bmi=bmi_median, trans_type="0.original") %>%
+  bind_rows(asd_down_bmi_median %>% mutate(trans_bmi=log(bmi_median), trans_type="1.log")) %>%
+  bind_rows(asd_down_bmi_median %>% mutate(trans_bmi=bmi_median^(1/2), trans_type="2.sqrt")) %>%
+  bind_rows(asd_down_bmi_median %>% mutate(trans_bmi=bmi_median^(1/3), trans_type="3.cubert"))
+
+ggplot(asd_down_bmi_trans,aes(x=trans_bmi))+
+  geom_density(fill="blue",alpha=0.5)+
+  facet_wrap(~trans_type,scales="free",nrow=2)
+```
+
+
+**************************************************************************************************
+
+#### Normalization 
+
+Generaly means data for a numerical variable are scaled in order to range between a specified set of values, such as 0 - 1. 
+* mean-sd scaling: (x-m)/s, where m is the mean and s is the sample standard deviations
+* min-max scaling: (x-min)/(min-max)
+
+```{r bmi_norm, fig.width=10, fig.height=4}
+bmi_m<-mean(bmi_cat$bmi_median,na.rm=T)
+bmi_sd<-sd(bmi_cat$bmi_median,na.rm=T)
+bmi_min<-min(bmi_cat$bmi_median,na.rm=T)
+bmi_max<-max(bmi_cat$bmi_median,na.rm=T)
+
+bmi_cat_norm<-bmi_cat %>%
+  mutate(norm_m_sd=(bmi_median-bmi_m)/bmi_sd,
+         norm_min_max=(bmi_median-bmi_min)/(bmi_max-bmi_min)) %>%
+  select(bmi_median,norm_m_sd,norm_min_max) %>%
+         gather(var,val)
+
+ggplot(bmi_cat_norm,aes(y=val))+
+  geom_boxplot()+
+  facet_wrap(~var,scales = "free",nrow=1)
+
+```
+
+
+**************************************************************************************************
+
+#### Aggregation/Generalization/Reduction
+
+Two or more values of the same attribute (but with different labels) are aggregated into one value. For example, "@" and "declined" are used as different categories for race:
+
+```{r race}
+table(asd_down_bmi_median$RACE)
+```
+
+And you may want to group them together as a single "unknown" category:
+
+```{r race_agg}
+asd_down_bmi_median<-asd_down_bmi_median %>%
+  mutate(RACE=case_when(RACE %in% c("@","declined") ~ "unknown",
+                        TRUE ~ RACE))
+table(asd_down_bmi_median$RACE)
+```
+
+```{r ohe}
+race_ohe<-asd_down_bmi_median %>% 
+  dplyr::select(PATIENT_NUM,RACE) %>%
+  mutate(RACE2=RACE,ind=1) %>%
+  spread(RACE2,ind, fill = 0)
+```
+
+
+Sometime, you may want to aggregate low level attributes into higher level ones. For example, cardiovascular disease are recorded as multiple lower-level diagnosis codes in EHR, which may need to be aggregated. However, there may also be times when you want to keep such granularity. 
+
+```{sql, connection=conn}
+select variable, count(distinct code)
+from prvm_idd_code_info_view
+where lower(variable) like '%heart%'
+group by variable
+```
+
+There are also some statistical approaches to aggregate the variables in a more systemic fashion (e.g. principal component analysis, latent factor analysis), which are usually used in high-dimensional data (i.e. more than hundreds of variables). However, such approaches may impair the interpretability of your model. We may re-visit this topic with more details when we come across with analysis involving high-dimensional data.    
+
+
+**********************************************************************************
+
+#### Put things together
+
+Let's put everything together, and save a final version of cleaned dataset. Recall that we have done the following cleaning for the dataset:    
+
+- Take median BMI for each patient ( _Data Abstraction_ )   
+- Correct BMI outliers ( _Data Clean_ )   
+- Impute missing BMI ( _Data Clean_ )   
+- Group "unknown" category for Race ( _Data Aggregation_ )    
+- One-hot-encode for Sex and Race ( _Data Transformation_ )   
+
+```{r final_data}
+data_final<-asd_down_bmi_median_imp3 %>%
+  select(PATIENT_NUM,AGE_AT_FIRSTDX,DIAGNOSIS,bmi_median) %>%
+  left_join(sex_ohe, by="PATIENT_NUM") %>%
+  left_join(race_ohe,by="PATIENT_NUM") %>%
+  left_join(asd_down_bmi %>% select(PATIENT_NUM,OSA_ONSET,AGE_AT_OSA) %>% unique, by="PATIENT_NUM") %>%
+  mutate(OSA_ind=as.numeric(!is.na(OSA_ONSET)))
+
+saveRDS(data_final,file="./idd_bmi_final.rda")
+```

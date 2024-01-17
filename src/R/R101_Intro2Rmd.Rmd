@@ -1,0 +1,90 @@
+---
+title: "Introduction to R-markdown"
+author: "Xing Song"
+date: "10/04/2022"
+output: html_document
+---
+
+## Markdown for formatted text
+Markdown is a set of conventions for formatting plain text. You can use markdown to indicate
+
+- bold and italic text
+- lists
+- headers (e.g., section titles)
+- hyperlinks
+- and much more 
+
+The conventions of markdown are very unobtrusive, which make Markdown files easy to read. The file below uses several of the most useful markdown conventions.
+
+1. **headers** - Place one or more hashtags at the start of a line that will be a header (or sub-header). For example, # Say Hello to markdown. A single hashtag creates a first level header. Two hashtags, ##, creates a second level header, and so on.
+
+2. **italicized and bold text** - Surround italicized text with asterisks, like this *without realizing it*. Surround bold text with two asterisks, like this **easy to use**.
+
+3. **lists** - Group lines into bullet points that begin with asterisks. Leave a blank line before the first bullet, like this: 
+
+>This is a list
+>
+ * item 1
+ * item 2
+ * item 3
+>
+
+4. **hyperlinks** - Surround links with brackets, and then provide the link target in parentheses, like this [Github](www.github.com).
+
+*********************************
+
+**Remark: you can learn a lot more about R-markdown by visiting [R Markdown: The Definitive Guide](https://bookdown.org/yihui/rmarkdown/). And [R Cheatsheets](https://rstudio.com/resources/cheatsheets/) provide good references for all types of R syntax.** 
+
+*****************************
+
+## R Markdown
+
+R Markdown is a file format for making dynamic documents with R. R Markdown files are designed to be used with the `rmarkdown` package. rmarkdown comes installed with the RStudio IDE, but you can acquire your own copy of rmarkdown from CRAN. 
+
+*****************************
+
+### Embed R codes 
+An R Markdown document is written in markdown (an easy-to-write plain text format) and contains chunks of embedded R codes, such as
+
+```{r}
+#embedding summaries
+summary(cars)
+```
+
+```{r}
+#embedding plots
+plot(cars)
+```
+
+*****************************
+
+### Embed Other Coding Languages
+A less well-known fact about R Markdown is that many other languages are also supported, such as Python, Julia, C++, and SQL. The support comes from the knitr package, which has provided a large number of language engines. 
+
+#### Embed Python
+You can embed `python` codes, but will need to install the interfacing package [reticulate](https://rstudio.github.io/reticulate/) first,
+
+```{r}
+pacman::p_load(reticulate)
+```
+
+```{python}
+x = 'hello, python world!'
+print(x.split(' '))
+```
+
+You can embed many other languages, read for more details: https://bookdown.org/yihui/rmarkdown/language-engines.html. 
+
+
+*****************************
+
+## Rendering Report
+
+R Markdown files are the source code for rich, reproducible documents. You can transform an R Markdown file in two ways.
+
+1. **knit** - You can knit the file. The rmarkdown package will call the knitr package. knitr will run each chunk of R code in the document and append the results of the code to the document next to the code chunk. This workflow saves time and facilitates reproducible reports.
+
+2. **convert** - You can convert the file. The rmarkdown package will use the pandoc program to transform the file into a new format. For example, you can convert your .Rmd file into an *HTML*, *PDF*, or *Microsoft Word* file. You can even turn the file into an HTML5 or PDF slideshow. rmarkdown will preserve the text, code results, and formatting contained in your original .Rmd file.
+
+**************************
+Finally, let's hit the `Kint` button above and see what happens!

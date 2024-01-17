@@ -1,0 +1,167 @@
+---
+title: "Causal Inference"
+author: "Xing Song"
+date: '2022-11-17'
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      echo=F,
+                      fig.width=6,
+                      fig.height=4)
+
+#load packages
+pacman::p_load(tidyverse,
+               survival,
+               survminer,
+               tableone,
+               MatchIt,
+               WeightIt,
+               cobalt
+               )
+```
+
+Load the analytic dataset used previously for the ALS cohort:  
+
+```{r}
+#load data
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
+  mutate(SEX_F = case_when(SEX=='F' ~ 1,
+                           TRUE ~ 0)) %>%
+  mutate(status=MORT_IND,
+         time=coalesce(DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR))
+```
+
+
+Recall from the survival analysis session that we observed that riluzole-user group has higher hazard (or lower survival), which is counter-intuitive: 
+
+```{r}
+ggsurvplot(
+    fit = survfit(Surv(time,status) ~ RILUZ_IND, data = aset),
+    pval = TRUE, conf.int = TRUE,risk.table = TRUE,
+    surv.median.line = "hv",linetype = "strata", 
+    xlab = "Days", break.x.by = 365,
+    ylab = "Mortality Endpoint")
+```
+
+
+# Cohort characterization
+
+Use functions from "tableone" package to generate overall summaries of the study cohort, which requires the creation of "TableOne" object first. To create the "TableOne" object, you will need to specify all variables of interests and separate between numerical variables and categorical variables. 
+
+```{r}
+# create vector of all variable names
+allvar<-c("AGE_AT_ALS1DX", "RILUZ_DUR", "DAYS_ALS1DX_TO_DEATH", "DAYS_ALS1DX_TO_CENSOR", "time",
+          "SEX_F", "RACE", "RILUZ_IND","MORT_1YR","status")
+
+# create vector of categorical variable names
+catvar<-c("SEX_F", "RACE", "RILUZ_IND","MORT_1YR","status")
+
+# create a TableOne object
+tab<-CreateTableOne(vars=allvar,data=aset,factorVars = catvar)
+tab
+```
+
+By specifying the "strata" argument,"TableOne" object can also be used to generate cohort characterization summaries for comparison sub-population stratified by exposure/treatment variable. In other words, "tableone" package provides an efficient way for performing filter-based feature selection. 
+
+```{r}
+allvar_excld_strata<-allvar[!allvar %in% c("RILUZ_IND","RILUZ_DUR")]
+catvar_excld_strata<-catvar[!catvar %in% c("RILUZ_IND","RILUZ_DUR")]
+tab2<-CreateTableOne(vars=allvar_excld_strata,data=aset,factorVars = catvar_excld_strata,strata="RILUZ_IND")
+tab2
+```
+
+However, with only the demographic information, there doesn't seem to be any difference between the riluzole user group (`RILUZ_IND = 1`) and non-riluzole user group (`RILUZ_IND = 0`). We need to take a look at more baseline clinical and biological characteristics of these two comparison cohort to detect potential confounders. I have created a new dataset called "ALS_DX_BL" which contains all baseline comorbidities grouped as  clinical classification software (CCS) derived from patients' diagnosis history (all observations from CDM Diagnosis table). 
+
+```{r}
+# need to load some additional data
+pacman::p_load(DBI,odbc)
+myconn <- DBI::dbConnect(drv = odbc::odbc(),
+                               dsn = "snowflake_db",
+                               uid = "XSM7F@UMSYSTEM.EDU", # need to modify to your own user id
+                               pwd = "")
+
+dat_add<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_DX_BL where RN = 1")) %>% collect
+```
+
+
+```{r}
+# set aside data dictionary for CCS categories
+ccs_dd<-dat_add %>% select(CCS,CCS_LABEL) %>% unique %>%
+  group_by(CCS) %>% summarise(CCS_LABEL = paste(CCS_LABEL,collapse = ";"), .groups = "drop")
+
+# create CCS indicators
+add_ccs<-dat_add %>%
+  select(PATID,CCS) %>% mutate(CCS=paste0("CCS_",CCS),ind=1) %>%
+  spread(CCS,ind,fill=0)
+```
+
+Adding the additional baseline co-morbidity information, we were able to observe some differential charactersitics between the comparison groups: 
+
+```{r}
+aset2<-aset %>%
+  left_join(add_ccs,by="PATID") %>%
+  mutate_at(vars(starts_with("CCS_")),
+            funs(ifelse(is.na(.), 0, .)))
+
+ccs_col<-colnames(aset2)[grepl("^CCS_",colnames(aset2))]
+allvar_excld_strata<-c(allvar_excld_strata,ccs_col)
+catvar_excld_strata<-c(catvar_excld_strata,ccs_col)
+
+tab3<-CreateTableOne(vars=allvar_excld_strata,data=aset2,factorVars = catvar_excld_strata,strata="RILUZ_IND")
+tab3
+```
+
+Using a threshold at p = 0.1, we observed that the following CCS codes (disease phenotype) had significantly different distribution between the exposed (riluzole user) and unexposed groups: 
+- CCS_101: Coronary atherosclerosis and other heart disease
+- CCS_163: Genitourinary symptoms and ill-defined conditions
+- CCS_211: Other connective tissue disease
+- CCS_252: Malaise and fatigue	
+- CCS_53: Disorders of lipid metabolism
+- CCS_95: Other nervous system disorders
+
+
+# Covariate Adjustment
+
+```{r}
+fit_cox<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX + CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95,
+               data=aset2)
+summary(fit_cox)
+```
+
+# Propensity Score Matching
+
+The "MatchIt" package provides convenient functions to perform propensity-score-based matching:   
+
+```{r}
+mod_match<-matchit(RILUZ_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2,
+                   method = "nearest", distance = "glm")
+love.plot(mod_match, thresholds = c(m = .1), var.order = "unadjusted")
+```
+
+Build coxph survival model based on the matched sample: 
+
+```{r,fig.width=8}
+aset2_match <- match.data(mod_match)
+fit_cox2<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX,
+                data=aset2_match)
+summary(fit_cox2)
+```
+
+# Propensity Score Weighting 
+
+The "WeightIt" package provides convenient function to calcualte propensity-score-based weights, which can be directly used as "weights" argument in widely used regression modeling packages, such as "glm", "coxph"
+
+```{r}
+mod_weight<-weightit(RILUZ_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2)
+
+fit_cox3<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX,
+                data=aset2,weights = mod_weight$weights)
+summary(fit_cox3)
+```
+

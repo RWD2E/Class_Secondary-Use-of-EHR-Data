@@ -1,0 +1,168 @@
+---
+title: "Survival Analysis"
+author: "Xing Song"
+date: '2022-11-10'
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes
+
+```{r setup}
+#set up rmd 
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      echo=F,
+                      fig.width=6,
+                      fig.height=4)
+
+#load packages
+pacman::p_load(tidyverse,
+               survival,
+               survminer,
+               gtsummary)
+
+#load data
+aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
+  mutate(SEX_F = case_when(SEX=='F' ~ 1,
+                           TRUE ~ 0)) %>%
+  mutate(status=MORT_IND,
+         time=coalesce(DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR))
+```
+
+
+## Kaplan-Meier Curve
+
+Let's first get familiar with survival object. The `Surv()` function creates a survival object that contains three parts: a numerical part that is the survival time; a `+` or `:1` symbol suggesting the subject being censored or an event. For example,
+
+```{r}
+Surv(aset$time,aset$status)[1:10]
+```
+
+```{r}
+km_fit<-survfit(Surv(time,status) ~ 1, data = aset)
+```
+
+### Estimate 𝑥-year survival, or life table
+
+```{r}
+summary(km_fit,times = 365.25*c(1:5))
+```
+
+
+```{r}
+ggsurvplot(fit = km_fit,
+           pval = TRUE, conf.int = TRUE,risk.table = TRUE,
+           surv.median.line = "hv",linetype = "strata", 
+           xlab = "Days", break.x.by = 365*2,
+           ylab = "Mortality Endpoint")
+```
+
+### Estimate median survival time
+
+```{r}
+survfit(Surv(time, status) ~ 1, data = aset) %>% 
+  tbl_survfit(
+    probs = 0.5,
+    label_header = "**Median survival (95% CI)**"
+  )
+```
+
+
+### Stratified KM curves
+
+```{r,fig.height=8,fig.width=12}
+ggsurvplot(
+    fit = survfit(Surv(time,status) ~ RILUZ_IND, data = aset),
+    pval = TRUE, conf.int = TRUE,risk.table = TRUE,
+    surv.median.line = "hv",linetype = "strata", 
+    xlab = "Days", break.x.by = 365,
+    ylab = "Mortality Endpoint")
+```
+
+
+```{r,fig.height=8,fig.width=12}
+ggsurvplot(
+    fit = survfit(Surv(time,status) ~ SEX_F, data = aset),
+    pval = TRUE, conf.int = TRUE,risk.table = TRUE,
+    surv.median.line = "hv",linetype = "strata", 
+    xlab = "Days", break.x.by = 365,
+    ylab = "Mortality Endpoint")
+```
+
+
+## Cox Proportional Hazard Regression Model
+
+```{r}
+ggplot(aset,aes(x=time))+
+  geom_density(aes(fill=as.factor(status)),alpha=0.5)
+```
+
+
+```{r}
+cox_fit<-coxph(Surv(time, status) ~ RILUZ_IND, data = aset)
+summary(cox_fit)
+```
+
+
+```{r}
+coxph(Surv(time, status) ~ RILUZ_IND, data = aset) %>% 
+  tbl_regression(exp = TRUE)
+```
+
+
+```{r}
+coxph(Surv(time, status) ~ SEX_F, data = aset) %>% 
+  tbl_regression(exp = TRUE)
+```
+
+```{r}
+cox_fit2<-coxph(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR , data = aset)
+summary(cox_fit2)
+```
+
+
+### Model Diagnostics
+
+```{r}
+res<-cox.zph(cox_fit2)
+plot(res)
+```
+
+
+## Accelerated Failure Time Model
+
+```{r}
+aft_fit1<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
+              dist = "exp")
+summary(aft_fit1)
+```
+
+
+```{r}
+aft_fit2<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
+              dist = "weib")
+summary(aft_fit2)
+```
+
+
+```{r}
+aft_fit3<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
+              dist = "logl")
+summary(aft_fit3)
+```
+
+
+```{r}
+aft_fit4<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
+              dist = "logn")
+summary(aft_fit4)
+```
+
+
+```{r}
+AIC(aft_fit1,
+    aft_fit2,
+    aft_fit3,
+    aft_fit4,
+    cox_fit2)
+```

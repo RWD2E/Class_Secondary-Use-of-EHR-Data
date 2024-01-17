@@ -1,0 +1,114 @@
+---
+title: "Data Import and Export"
+author: "Xing Song"
+date: "10/10/2022"
+output: html_document
+---
+
+Let's do some preparation for the class by running the following chunk of codes:
+
+```{r setup, include=FALSE}
+#set up rmd print-out style
+knitr::opts_chunk$set(message=F,
+                      warning=F,
+                      fig.width=6, 
+                      fig.height=3)
+
+#install all the packages for this script
+pacman::p_load(DBI,odbc, # database connection
+               tidyverse,# data cleaning packages
+               dbplyr # R package interfacing with SQL db
+               )
+```
+
+# Make Database connection
+First, let us follow the [Service Workbench User Manual](https://github.com/sxinger/HMI7001-secondary-use-of-EHR/blob/main/ref/Service_Workbench_User_Manual.md) to setup ODBC connector object (i.e. Data Source Name, or, DSN). 
+
+Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make database connection. Due to re-direction to Umsystem log-in page with the Shibboleth method, you may not be able to Knit this report at once. 
+
+```{r db_connection}
+# you can directly put your credential in the function
+# myconn <- DBI::dbConnect(drv = odbc::odbc(),
+#                          dsn = "XXXX",
+#                          uid = "", # leave the user_id empty if using Shibboleth (as you will be prompted to the university log-in portal)
+#                          pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
+#                          ) 
+
+# or just in case you may accidentally copy out your credentials out together with your R codes
+# you can save the credentials as an environment parameter and call it using an alias
+myconn <- DBI::dbConnect(drv = odbc::odbc(),
+                         dsn = Sys.getenv("ODBC_DSN_NAME"),
+                         uid = Sys.getenv("SNOWFLAKE_USER"), # you may also leave the user_id empty if using Shibboleth
+                         pwd = Sys.getenv("SNOWFLAKE_PWD")   # you may also leave the password empty if using Shibboleth
+                         )
+```
+
+# Load data in using R function by embedding SQL codes
+The classic method for loading data from SQL database is to directly send SQL queries over to the database engine, run the queries and return the result back as a data.frame.
+
+```{r}
+dat1a<-dbGetQuery(myconn,
+                 "select * from ALS.ALS_PT_TABLE")
+```
+
+# Load data in using R function interfacing with SQL
+There are existing R packages with wrapper function that can interface with SQL. In other words, instead of writing out the SQL codes, you can just call the R function to perform some simple SQL operations, such as read a single table into R and write a single table over to SQL database. 
+
+```{r}
+dat1b<-tbl(myconn,in_schema("ALS","ALS_PT_TABLE")) %>% 
+  collect()
+```
+
+```{r}
+dat1c<-tbl(myconn,sql("select * from ALS.ALS_PT_TABLE")) %>%
+  collect()
+```
+
+# Load data in using SQL chunk supported by Rmd
+R markdown further simplified the above codes for embedding SQL queries by including "SQL code chunks". SQL code chunk is implemented with the chunk header of parameters `sql, connection, output.var`. 
+
+```{sql, connection=myconn, output.var="dat1d"}
+select * from ALS.ALS_PT_TABLE
+```
+
+# Save intermediate data
+Please create a sub-folder under the working directory as `./data` and all raw and intermediate data will be saved their for better management. 
+
+## save dataframe as Rdata file (.rda)
+```{r}
+saveRDS(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+```
+
+Then, how do we read the .rda file back into R?
+
+```{r}
+dat1_rds<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+```
+
+## save dataframe as CSV file (.csv)
+```{r}
+write.csv(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.csv")
+```
+
+Then, how do we read the .csv file back into R?
+
+```{r}
+dat1_csv<-read.csv("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.csv")
+```
+
+## save dataframe as delimiter separated file (.txt)
+```{r}
+write.table(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.txt",sep="|")
+```
+
+Then, how do we read the .csv file back into R?
+
+```{r}
+dat1_txt<-read.table("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.txt",sep="|")
+```
+
+Let's load in another data table with Riluzole data (exposure of interest)
+```{r}
+dat2<-tbl(myconn,sql("select * from ALS.ALS_RILUZOLE")) %>% collect()
+saveRDS(dat2,file="C:/Users/Administrator/Documents/classHMI7001/data/als_riluzole.rda")
+```
