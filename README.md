@@ -4,9 +4,9 @@ This course is tailored towards Master of Health Informatics but could be of int
 
 
 ## Course Goals / Objectives:
-1. Identify secondary data sources available for observational and prospective clinical research
-2. Develop a basic understanding of the strengths and weaknesses of various source systems and underlying clinical workflows generating secondary data for clinical research
-3. Demonstrate competent use of informatics methods for hypotheses generation, computable phenotyping, data management, and analytic dataset preparation
-4. Design an observational study or cohort for a prospective trial, create an analytic dataset, and complete preliminary analysis
-5. Be able to select appropriate statistical or machine learning technics on RWHD to address healthcare problems in one of the three settings (case-control, cohort study, cross-sectional study)
-6. Understand the concepts and importance of model overfitting, model bias and interpretability and common methods to address relevant issues
+1. Identify secondary data sources available for observational and prospective clinical research.
+2. Develop a basic understanding of the strengths and weaknesses of various source systems and underlying clinical workflows generating secondary data for clinical research.
+3. Demonstrate competent use of informatics methods for hypotheses generation, computable phenotyping, data management, and analytic dataset preparation.
+4. Design an observational study or cohort for a prospective trial, create an analytic dataset, and complete preliminary analysis.
+5. Be able to select appropriate statistical or machine learning technics on RWHD to address healthcare problems in one of the three settings (case-control, cohort study, cross-sectional study).
+6. Understand the concepts and importance of model overfitting, model bias and interpretability and common methods to address relevant issues.
