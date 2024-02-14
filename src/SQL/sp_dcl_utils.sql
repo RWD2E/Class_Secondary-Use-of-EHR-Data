@@ -8,10 +8,13 @@ ref:
 - https://docs.snowflake.com/en/sql-reference/sql/grant-privilege.html
 */
 
-CREATE OR REPLACE PROCEDURE dcl_new_user(USER_ACCOUNT STRING,
-                                         USER_EMAIL_DOMAIN STRING,
-                                         FIRST_NAME STRING,
-                                         LAST_NAME STRING)
+-- create class member role
+CREATE OR REPLACE PROCEDURE dcl_new_user(
+    USER_ACCOUNT STRING,
+    USER_EMAIL_DOMAIN STRING,
+    FIRST_NAME STRING,
+    LAST_NAME STRING
+)
 RETURNS VARIANT NOT NULL
 LANGUAGE javascript
 AS
@@ -28,7 +31,7 @@ var msg_as_json = {};
 
 // Form user email and role
 var NAME = USER_ACCOUNT.toUpperCase()
-var USER_EMAIL = NAME + '@' + USER_EMAIL_DOMAIN;
+var USER_EMAIL = USER_ACCOUNT + '@' + USER_EMAIL_DOMAIN;
 var USER_ROLE = 'CLASS_MEMBER_' + NAME;
 
 // Create role
@@ -47,8 +50,9 @@ try {
                         login_name = '`+ USER_EMAIL +`' 
                         first_name = '`+ FIRST_NAME +`' 
                         last_name = '`+ LAST_NAME +`' 
+                        display_name = '`+ LAST_NAME +`,`+ FIRST_NAME +`'
                         email = '`+ USER_EMAIL +`' 
-                        must_change_password = TRUE;`;
+                        must_change_password = FALSE;`;
     var dcl_user_stmt = snowflake.createStatement({sqlText:dcl_user_qry});
     dcl_user_stmt.execute();
     msg_as_json["user"] = "successfully created the new role"
@@ -69,9 +73,11 @@ return msg_as_json
 $$
 ;
 
-CREATE OR REPLACE PROCEDURE dcl_role_spec(USER_ROLE STRING,
-                                          WH_NAME STRING,
-                                          READONLY_DB ARRAY)
+CREATE OR REPLACE PROCEDURE dcl_role_spec(
+    USER_ROLE STRING,
+    WH_NAME STRING,
+    READONLY_DB ARRAY
+)
 RETURNS VARIANT NOT NULL
 LANGUAGE javascript
 as
