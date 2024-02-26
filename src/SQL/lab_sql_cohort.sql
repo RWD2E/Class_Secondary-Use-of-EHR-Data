@@ -104,4 +104,32 @@ create an outcome table with following information collected in separate columns
 - OUTCOME_DATE: date of the outcome: death date if DEATH_IND = 1; last encounter date if DEATH_IND = 0
 */
 
+create or replace table outcome_all as 
+select distinct dth.patid, dth.death_date::date as death_date
+from deidentified_pcornet_cdm.cdm_c015r031.deid_death dth 
+join als_incld_demo als 
+on dth.patid = als.patid 
+;
 
+select count(*), count(distinct patid)
+from outcome_all;
+
+
+create or replace table outcome_death_dup as 
+select patid, count(distinct death_date) as dup_cnt
+from outcome_all 
+group by patid
+;
+
+
+
+create or replace table outcome_final as
+select dth.*
+from outcome_all dth 
+where exists (
+ select 1 from outcome_death_dup dup where dup.patid = dth.patid and dup.dup_cnt = 1
+)
+;
+
+select count(*), count(distinct patid)
+from outcome_final;
