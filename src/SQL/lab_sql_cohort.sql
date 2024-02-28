@@ -103,33 +103,78 @@ create an outcome table with following information collected in separate columns
 - OUTCOME_STATUS: an indicator of mortality: 1 if a death date is observed; 0 otherwise
 - OUTCOME_DATE: date of the outcome: death date if DEATH_IND = 1; last encounter date if DEATH_IND = 0
 */
-
+-- collect all death date data
 create or replace table outcome_all as 
 select distinct dth.patid, dth.death_date::date as death_date
 from deidentified_pcornet_cdm.cdm_c015r031.deid_death dth 
 join als_incld_demo als 
 on dth.patid = als.patid 
 ;
-
+-- duplicate check
 select count(*), count(distinct patid)
 from outcome_all;
+-- it seems that there could be multiple death records per patient
 
-
+-- create a helper table to identify conflict death dates
 create or replace table outcome_death_dup as 
 select patid, count(distinct death_date) as dup_cnt
 from outcome_all 
 group by patid
 ;
 
-
-
-create or replace table outcome_final as
-select dth.*
+-- create final deduplicated death table 
+create or replace table outcome_death_dedup as
+select dth.patid, 
+       1 as outcome_status,
+       dth.death_date as outcome_date
 from outcome_all dth 
 where exists (
  select 1 from outcome_death_dup dup where dup.patid = dth.patid and dup.dup_cnt = 1
 )
 ;
-
+-- duplicate check
 select count(*), count(distinct patid)
-from outcome_final;
+from outcome_death_dedup;
+
+-- create a censor table for patients who are still alive
+create or replace table outcome_censor as 
+select patid, 
+       max(admit_date) as censor_date
+from deidentified_pcornet_cdm.cdm_c015r031.deid_encounter
+where admit_date::date <= '2024-01-31'
+group by patid
+;
+
+-- putting the death table and censor table together
+create or replace table outcome_final as 
+select demo.patid, 
+       case when dth.outcome_status = 1 then 1 else 0 end as outcome_status,
+       case when dth.outcome_date is not null then dth.outcome_date else cs.censor_date end as outcome_date
+from als_incld_demo demo
+left join outcome_death_dedup dth
+on demo.patid = dth.patid
+left join outcome_censor cs
+on demo.patid = cs.patid
+;
+-- think about why I have to do "left join"
+
+/*
+now, putting everything together and create final analytic dataset
+*/
+create or replace table als_riluzole_death_final as 
+select demo.*,
+       case when r.riluzole_ind = 1 then 1 else 0 end as riluzole_ind,
+       case when r.riluzole_dur is not null then r.riluzole_dur else 0 end as riluzole_dur,
+       o.outcome_status,
+       o.outcome_date
+from  als_incld_demo demo
+left join als_riluz r 
+on demo.patid = r.patid
+left join outcome_final o 
+on demo.patid = o.patid
+;
+-- think about why I have to do "left join"
+
+select count(*), count(distinct patid) from als_riluzole_death_final;
+
+select * from als_riluzole_death_final limit 5;
