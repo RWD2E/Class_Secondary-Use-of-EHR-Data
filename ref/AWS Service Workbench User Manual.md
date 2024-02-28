@@ -152,7 +152,7 @@ To configure the ODBC driver in a Windows environment, follow the next steps des
 9.  Tracing: 6
 10. Authenticator: externalbrowser
 ```
-Note: once your snowflake has been activated, the `[snowflake_account_name]` can be found from the url link to snowflake log-in page. `Database` and `Schema` are optional. You may have visibility to all other databases and schema once the connection is established. However, you may not be able to query all databases depending on your role privilege on the Snowflake side.
+Note: `Database` and `Schema` are optional. You may have visibility to all other databases and schema once the connection is established. However, you may not be able to query all databases depending on your role privilege on the Snowflake side.
 
 ## Step 3: Connect to Snowflake with ODBC driver
 You will need to install the `DBI` and `odbc` packages before making the database. You can then make the database connection call by implicitly calling for the credentials saved in the environment:
