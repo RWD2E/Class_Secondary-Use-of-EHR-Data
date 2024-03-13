@@ -95,12 +95,10 @@ General steps for data preprocessing are **Data Integration**, **Data Abstractio
 # more on: https://cran.r-project.org/web/packages/lubridate/vignettes/lubridate.html
 ##=======================================================================================
 df<-df %>%
-  mutate(DAYS_ALS1DX_TO_DEATH = difftime(lubridate::ymd(riluz_end), lubridate::ymd(riluz_begin), units = "days"))
+  mutate(DAYS_ALS1DX_TO_DEATH = difftime(lubridate::ymd(OUTCOME_DATE), lubridate::ymd(DX_DATE1), units = "days"))
 
 head(df)
 
-riluz_tbl_dur %>%
-  filter(duplicated(PATID))
 ```
 
 
