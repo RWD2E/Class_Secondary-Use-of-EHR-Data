@@ -8,6 +8,9 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes:
 
 ```{r setup, include=FALSE}
+#install pacman if not
+install.packages("pacman")
+
 #install all the packages for this script
 pacman::p_load(
     DBI, # database connection
@@ -30,15 +33,6 @@ Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make 
 #    uid = "", # leave the user_id empty if using Shibboleth (as you will be prompted to the university log-in portal)
 #    pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
 #) 
-
-# or just in case you may accidentally copy out your credentials out together with your R codes
-# you can save the credentials as an environment parameter and call it using an alias
-myconn <- DBI::dbConnect(
-    drv = odbc::odbc(),
-    dsn = Sys.getenv("ODBC_DSN_NAME"),
-    uid = Sys.getenv("SNOWFLAKE_USER"), # you may also leave the user_id empty if using Shibboleth
-    pwd = Sys.getenv("SNOWFLAKE_PWD")   # you may also leave the password empty if using Shibboleth
-)
 ```
 
 # Load data in using R function by embedding SQL codes
@@ -63,7 +57,9 @@ dat1b<-tbl(
 ```
 
 ```{r}
-dat1c<-tbl(myconn,sql("select * from ALS.ALS_PT_TABLE")) %>%
+dat1c<-tbl(
+    myconn,sql("select * from ALS.ALS_PT_TABLE")
+) %>%
   collect()
 ```
 

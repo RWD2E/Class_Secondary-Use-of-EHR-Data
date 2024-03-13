@@ -8,16 +8,11 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes:
 
 ```{r setup, include=FALSE}
-#set up rmd print-out style
-knitr::opts_chunk$set(message=F,
-                      warning=F,
-                      fig.width=6, 
-                      fig.height=3)
-
 #install all the packages for this script
-pacman::p_load(tidyverse,# data cleaning packages
-               finalfit,mice # missing data detection and imputation
-               )
+pacman::p_load(
+    tidyverse,# data cleaning packages
+    finalfit,mice # missing data detection and imputation
+)
 ```
 
 ```{r}
