@@ -101,46 +101,7 @@ head(df)
 
 ```
 
-
-**************************************************************************************************
-**************************************************************************************************
-
-### Data Integration
-
-A good strategy for data integration is to conceptualize what you want your final analytic dataset to look like even before data collection, guided by the following questions:
-* will the final analytic dataset be **one patient per row** or **one encounter per row** or **one particular event per row**?
-* what will be the layout of the final analytic dataset? More specifically, what are the columns in the final analytic dataset? 
-* if repeated measurements exist for a variable, what *data abstraction** step you want to perform on it? 
-
-Let's form a simple analytic dataset with: 
-1. one patient per row;
-2. layout to look like: 
-
-|PATID|SEX|RACE|AGE_AT_ALS1DX|RILUZ_DUR|RILUZ_IND|DAYS_ALS1DX_TO_DEATH|DAYS_ALS1DX_TO_CENSOR|MORT_IND |MORT_1YR |
-|1234 |M  |05  |70           |300      |1        |NA                  |200                  |0        |0        |
-
-```{r}
-##========================================================
-# "left_join" or "inner_join" function to integrate
-# multiple tables together
-##========================================================
-final_set<-pt_tbl %>%
-  left_join(riluz_tbl_dur,by="PATID") %>%
-  mutate(RILUZ_IND = case_when(!is.na(RILUZ_DUR) ~ 1,
-                              TRUE ~ 0),
-         MORT_IND = case_when(!is.na(DAYS_ALS1DX_TO_DEATH) ~ 1,
-                              TRUE ~ 0),
-         MORT_1YR = case_when(DAYS_ALS1DX_TO_DEATH<=365 ~ 1,
-                              is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR<=365 ~ NA_real_,
-                              TRUE ~ 0)) %>%
-  select(PATID,SEX,RACE,AGE_AT_ALS1DX,RILUZ_DUR,RILUZ_IND,DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR,MORT_IND, MORT_1YR)
-
-head(final_set)
-```
-
-
-**************************************************************************************************
-**************************************************************************************************
+**********************************************************************************
 
 ### Data Cleaning 
 
@@ -153,7 +114,7 @@ head(final_set)
 # "arrange" function to order data.frame according 
 #  one/many index columns
 ##========================================================
-final_set %>%
+df %>%
   group_by(PATID) %>% 
   filter(n()>1) %>%
   arrange(PATID) %>%
@@ -166,12 +127,12 @@ final_set %>%
 ##========================================================
 # "group_by"+"filter" to de-duplicate
 ##========================================================
-final_set<-final_set %>%
+df<-df %>%
   group_by(PATID) %>%
   filter(DAYS_ALS1DX_TO_DEATH == min(DAYS_ALS1DX_TO_DEATH) | is.na(DAYS_ALS1DX_TO_DEATH)) %>%
   ungroup
 
-final_set %>%
+df %>%
   group_by(PATID) %>% 
   filter(n()>1) %>%
   arrange(PATID) %>%
@@ -192,7 +153,7 @@ final_set %>%
 ##======================================================== 
 explanatory = c("SEX","RACE","AGE_AT_ALS1DX","RILUZ_DUR","RILUZ_IND")
 dependent = 'MORT_IND'
-final_set %>%
+df %>%
   missing_pattern(dependent,explanatory)
 ```
 
@@ -202,19 +163,19 @@ final_set %>%
 # "replace_na" function for quick imputation using
 # a constant value
 ##=====================================================
-final_set<-final_set %>%
+df<-df %>%
   replace_na(list(RACE='UN'))
 
-final_set %>%
+df %>%
   missing_pattern(dependent,explanatory)
 ```
 
 
 ```{r}
-final_set<-final_set %>%
+df<-df %>%
   replace_na(list(RILUZ_DUR=0))
 
-final_set %>%
+df %>%
   missing_pattern(dependent,explanatory)
 ```
 
@@ -227,7 +188,7 @@ final_set %>%
 ##=====================================================
 # "spread" function for quick table pivoting
 ##=====================================================
-race_ohe<-final_set %>% 
+race_ohe<-df %>% 
   select(PATID,RACE) %>%
   mutate(ind=1) %>%
   spread(RACE,ind, fill = 0)
@@ -252,13 +213,13 @@ head(race_ohe)
 Let's add the numerical representations of one-hot encoded RACE columns, and form the final analytic set:
 
 ```{r}
-final_set<-final_set %>%
+df<-df %>%
   left_join(race_ohe,by="PATID")
 
-head(final_set)
+head(df)
 ```
 
 
 ```{r}
-saveRDS(final_set,file="C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+saveRDS(df,file="C:/Users/Administrator/Documents/classHMI7001/data/df.rda")
 ```
