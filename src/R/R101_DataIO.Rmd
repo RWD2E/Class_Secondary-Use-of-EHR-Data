@@ -49,14 +49,6 @@ dat1a<-dbGetQuery(
 There are existing R packages with wrapper function that can interface with SQL. In other words, instead of writing out the SQL codes, you can just call the R function to perform some simple SQL operations, such as read a single table into R and write a single table over to SQL database. 
 
 ```{r}
-dat1b<-tbl(
-    myconn,
-    in_schema("SHARED_DB.ALS","ALS_RILUZOLE_DEATH_FINAL")
-) %>% 
-  collect() 
-```
-
-```{r}
 dat1c<-tbl(
     myconn,sql("select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL")
 ) %>%
