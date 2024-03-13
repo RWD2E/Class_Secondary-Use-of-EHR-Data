@@ -8,21 +8,17 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes:
 
 ```{r setup, include=FALSE}
-#set up rmd print-out style
-knitr::opts_chunk$set(message=F,
-                      warning=F,
-                      fig.width=6, 
-                      fig.height=3)
-
 #install all the packages for this script
-pacman::p_load(DBI,odbc, # database connection
-               tidyverse,# data cleaning packages
-               dbplyr # R package interfacing with SQL db
-               )
+pacman::p_load(
+    DBI, # database connection
+    odbc, # database connection
+    tidyverse,# data cleaning packages
+    dbplyr # R package interfacing with SQL db
+)
 ```
 
 # Make Database connection
-First, let us follow the [Service Workbench User Manual](https://github.com/sxinger/HMI7001-secondary-use-of-EHR/blob/main/ref/Service_Workbench_User_Manual.md) to setup ODBC connector object (i.e. Data Source Name, or, DSN). 
+First, let us follow the [Service Workbench User Manual](https://github.com/RWD2E/Class_Secondary-Use-of-EHR-Data/blob/main/ref/AWS%20Service%20Workbench%20User%20Manual.md) to setup ODBC connector object (i.e. Data Source Name, or, DSN). 
 
 Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make database connection. Due to re-direction to Umsystem log-in page with the Shibboleth method, you may not be able to Knit this report at once. 
 
