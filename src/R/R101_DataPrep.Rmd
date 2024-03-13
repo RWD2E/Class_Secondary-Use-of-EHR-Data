@@ -16,8 +16,7 @@ pacman::p_load(
 ```
 
 ```{r}
-pt_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
-riluz_tbl<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_riluzole.rda")
+df<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 ```
 
 ## Quantitative and Qualitative Data (11.2.3)

@@ -86,23 +86,23 @@ dat1_rds<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 
 ## save dataframe as CSV file (.csv)
 ```{r}
-write.csv(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_aset.csv")
+write.csv(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.csv")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_csv<-read.csv("C:/Users/Administrator/Documents/classHMI7001/data/als_aset.csv")
+dat1_csv<-read.csv("C:/Users/Administrator/Documents/proj/data/als_aset.csv")
 ```
 
 ## save dataframe as delimiter separated file (.txt)
 ```{r}
-write.table(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_aset.txt",sep="|")
+write.table(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.txt",sep="|")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_txt<-read.table("C:/Users/Administrator/Documents/classHMI7001/data/als_aset.txt",sep="|")
+dat1_txt<-read.table("C:/Users/Administrator/Documents/proj/data/als_aset.txt",sep="|")
 ```
 
