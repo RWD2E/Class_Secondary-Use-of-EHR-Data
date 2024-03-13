@@ -30,7 +30,7 @@ Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make 
 # myconn <- DBI::dbConnect(
 #    drv = odbc::odbc(),
 #    dsn = "XXXX",
-#    uid = "<pawprint>@umsystem.edu", 
+#    uid = "<Shibboleth username>@umsystem.edu", 
 #    pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
 #) 
 ```
@@ -41,7 +41,7 @@ The classic method for loading data from SQL database is to directly send SQL qu
 ```{r}
 dat1a<-dbGetQuery(
     myconn,  # connection object
-    "select * from ALS.ALS_PT_TABLE"  # sql codes
+    "select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL"  # sql codes
 )
 ```
 
@@ -51,14 +51,14 @@ There are existing R packages with wrapper function that can interface with SQL.
 ```{r}
 dat1b<-tbl(
     myconn,
-    in_schema("ALS","ALS_PT_TABLE")
+    in_schema("SHARED_DB.ALS","ALS_RILUZOLE_DEATH_FINAL")
 ) %>% 
   collect() 
 ```
 
 ```{r}
 dat1c<-tbl(
-    myconn,sql("select * from ALS.ALS_PT_TABLE")
+    myconn,sql("select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL")
 ) %>%
   collect()
 ```
@@ -67,7 +67,7 @@ dat1c<-tbl(
 R markdown further simplified the above codes for embedding SQL queries by including "SQL code chunks". SQL code chunk is implemented with the chunk header of parameters `sql, connection, output.var`. 
 
 ```{sql, connection=myconn, output.var="dat1d"}
-select * from ALS.ALS_PT_TABLE
+select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL
 ```
 
 # Save intermediate data
@@ -75,39 +75,34 @@ Please create a sub-folder under the working directory as `./data` and all raw a
 
 ## save dataframe as Rdata file (.rda)
 ```{r}
-saveRDS(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+saveRDS(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 ```
 
 Then, how do we read the .rda file back into R?
 
 ```{r}
-dat1_rds<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.rda")
+dat1_rds<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 ```
 
 ## save dataframe as CSV file (.csv)
 ```{r}
-write.csv(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.csv")
+write.csv(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_aset.csv")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_csv<-read.csv("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.csv")
+dat1_csv<-read.csv("C:/Users/Administrator/Documents/classHMI7001/data/als_aset.csv")
 ```
 
 ## save dataframe as delimiter separated file (.txt)
 ```{r}
-write.table(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.txt",sep="|")
+write.table(dat1a,file="C:/Users/Administrator/Documents/classHMI7001/data/als_aset.txt",sep="|")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_txt<-read.table("C:/Users/Administrator/Documents/classHMI7001/data/als_pt_table.txt",sep="|")
+dat1_txt<-read.table("C:/Users/Administrator/Documents/classHMI7001/data/als_aset.txt",sep="|")
 ```
 
-Let's load in another data table with Riluzole data (exposure of interest)
-```{r}
-dat2<-tbl(myconn,sql("select * from ALS.ALS_RILUZOLE")) %>% collect()
-saveRDS(dat2,file="C:/Users/Administrator/Documents/classHMI7001/data/als_riluzole.rda")
-```
