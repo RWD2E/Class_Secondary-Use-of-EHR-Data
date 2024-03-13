@@ -50,7 +50,8 @@ There are existing R packages with wrapper function that can interface with SQL.
 
 ```{r}
 dat1c<-tbl(
-    myconn,sql("select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL")
+    myconn,
+    sql("select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL")
 ) %>%
   collect()
 ```
@@ -98,3 +99,12 @@ Then, how do we read the .csv file back into R?
 dat1_txt<-read.table("C:/Users/Administrator/Documents/proj/data/als_aset.txt",sep="|")
 ```
 
+## let's also load the raw Riluzole drug table
+```{r}
+riluz<-tbl(
+    myconn,
+    sql("select * from SHARED_DB.ALS.ALL_RILUZOLE_ALS")
+) %>%
+  collect()
+saveRDS(riluz,file="C:/Users/Administrator/Documents/proj/data/riluz_tbl.rda")
+```

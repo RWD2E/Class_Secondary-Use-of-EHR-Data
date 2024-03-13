@@ -88,36 +88,16 @@ summary(pt_tbl$AGE_AT_ALS1DX)
 
 General steps for data preprocessing are **Data Integration**, **Data Abstraction**, **Data Cleaning**, **Data Transformation** and **Data Reduction**. 
 
-### Data Abstraction
-As you can see, in the `riluzole_tbl`, there are multiple medication entries for the drug riluzole. To get an analytic set with **one patient observation per row**, we need to perform the **data abstraction** step.
-
-```{r}
-##======================================================
-# "group_by" and "summarize" function for summarizing 
-#  variables according to certain grouping criteria and
-#  functions of interests
-##======================================================
-riluz_tbl_dur<-riluz_tbl %>%
-  group_by(PATID) %>%
-  summarize(riluz_begin = min(RX_ORDER_DATE),
-            riluz_end = max(RX_START_DATE),
-            .groups = "drop")
-
-head(riluz_tbl_dur)
-```
-
-
 ```{r}
 ##=========================================================================================
 # "ymd" and "difftime" functions from "lubridate" package to calculate date difference
 # The "lubridate" package in tidyverse provides functions for operations on dates and times
 # more on: https://cran.r-project.org/web/packages/lubridate/vignettes/lubridate.html
 ##=======================================================================================
-riluz_tbl_dur<-riluz_tbl_dur %>%
-  mutate(RILUZ_DUR = difftime(lubridate::ymd(riluz_end), lubridate::ymd(riluz_begin), units = "days")) %>%
-  mutate(RILUZ_DUR = as.numeric(RILUZ_DUR) + 1)
+df<-df %>%
+  mutate(DAYS_ALS1DX_TO_DEATH = difftime(lubridate::ymd(riluz_end), lubridate::ymd(riluz_begin), units = "days"))
 
-head(riluz_tbl_dur)
+head(df)
 
 riluz_tbl_dur %>%
   filter(duplicated(PATID))
