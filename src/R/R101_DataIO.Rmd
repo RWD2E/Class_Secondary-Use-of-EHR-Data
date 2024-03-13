@@ -30,7 +30,7 @@ Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make 
 # myconn <- DBI::dbConnect(
 #    drv = odbc::odbc(),
 #    dsn = "XXXX",
-#    uid = "", # leave the user_id empty if using Shibboleth (as you will be prompted to the university log-in portal)
+#    uid = "<pawprint>@umsystem.edu", 
 #    pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
 #) 
 ```
