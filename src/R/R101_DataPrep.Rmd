@@ -15,6 +15,7 @@ pacman::p_load(
 )
 ```
 
+
 ```{r}
 df<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 ```
@@ -26,8 +27,8 @@ df<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
 **nominal data**
 
 ```{r nom_data}
-ggplot(pt_tbl,aes(x=RACE))+
-  geom_histogram(stat="count")
+ggplot(df,aes(x=RACE))+
+  geom_bar(stat="count")
 ```
 
 **ordinal**
@@ -38,27 +39,49 @@ ggplot(pt_tbl,aes(x=RACE))+
 # "case_when" function
 ##==============================================
 #add a new column, "age_group", that groups ages into 5 groups
-pt_tbl_add_agegrp<-pt_tbl %>%
-  mutate(AGEGRP=case_when(AGE_AT_ALS1DX<65~'AgeGrp1',
-                          AGE_AT_ALS1DX>=65&AGE_AT_ALS1DX<70~'AgeGrp2',
-                          AGE_AT_ALS1DX>=70&AGE_AT_ALS1DX<75~'AgeGrp3',
-                          AGE_AT_ALS1DX>=75&AGE_AT_ALS1DX<80~'AgeGrp4',
-                          AGE_AT_ALS1DX>=80~'AgeGrp5'))
+df_add_agegrp<-df %>%
+  mutate(AGEGRP=case_when(
+    AGE_AT_DX_DATE1<65~'AgeGrp1',
+    AGE_AT_DX_DATE1>=65&AGE_AT_DX_DATE1<70~'AgeGrp2',
+    AGE_AT_DX_DATE1>=70&AGE_AT_DX_DATE1<75~'AgeGrp3',
+    AGE_AT_DX_DATE1>=75&AGE_AT_DX_DATE1<80~'AgeGrp4',
+    AGE_AT_DX_DATE1>=80~'AgeGrp5')
+  )
 #print first 6 rows
-head(pt_tbl_add_agegrp)
+head(df_add_agegrp)
 ```
+
+
+```{r}
+##==============================================
+#  you can also update the table in-place by 
+#  assigning to itself 
+##==============================================
+df<-df %>% mutate(AGEGRP=case_when(
+    AGE_AT_DX_DATE1<65~'AgeGrp1',
+    AGE_AT_DX_DATE1>=65&AGE_AT_DX_DATE1<70~'AgeGrp2',
+    AGE_AT_DX_DATE1>=70&AGE_AT_DX_DATE1<75~'AgeGrp3',
+    AGE_AT_DX_DATE1>=75&AGE_AT_DX_DATE1<80~'AgeGrp4',
+    AGE_AT_DX_DATE1>=80~'AgeGrp5')
+  )
+
+#print first 6 rows
+head(df)
+```
+
 
 ```{r}
 ##==============================================
 # "select" function for subsetting columns
 # you can exclude columns by adding a "-" sign
 ##==============================================
-pt_tbl_only_agegrp<-pt_tbl_add_agegrp %>%
+df_only_agegrp<-df %>%
   select(PATID,AGEGRP)
 
-ggplot(pt_tbl_only_agegrp,aes(x=AGEGRP))+
+ggplot(df_only_agegrp,aes(x=AGEGRP))+
   geom_bar(stat="count")
 ```
+
 
 **********************************                     
 
@@ -67,18 +90,18 @@ ggplot(pt_tbl_only_agegrp,aes(x=AGEGRP))+
 **discrete data**
 
 ```{r}
-ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+ggplot(df,aes(x=AGE_AT_DX_DATE1))+
   geom_histogram(fill="blue",bins = 40)
 ```
 
 **continuous data**
 
 ```{r}
-ggplot(pt_tbl,aes(x=AGE_AT_ALS1DX))+
+ggplot(df,aes(x=AGE_AT_DX_DATE1))+
   geom_density(fill="blue")
 
 #5-number summary
-summary(pt_tbl$AGE_AT_ALS1DX)
+summary(df$AGE_AT_DX_DATE1)
 ```
 
 **************************************************************************************************
@@ -94,11 +117,12 @@ General steps for data preprocessing are **Data Integration**, **Data Abstractio
 # The "lubridate" package in tidyverse provides functions for operations on dates and times
 # more on: https://cran.r-project.org/web/packages/lubridate/vignettes/lubridate.html
 ##=======================================================================================
-df<-df %>%
-  mutate(DAYS_ALS1DX_TO_DEATH = difftime(lubridate::ymd(OUTCOME_DATE), lubridate::ymd(DX_DATE1), units = "days"))
+df_add_days2outcome<-df %>%
+  mutate(OUTCOME_DATE_TRUNC = floor_date(OUTCOME_DATE,'day')) %>%
+  mutate(DX_DATE1_TRUNC = floor_date(DX_DATE1,'day')) %>%
+  mutate(DAYS_ALS1DX_TO_OUTCOME = difftime(lubridate::ymd(OUTCOME_DATE_TRUNC), lubridate::ymd(DX_DATE1_TRUNC), units = "days"))
 
-head(df)
-
+head(df_add_days2outcome)
 ```
 
 **********************************************************************************
@@ -114,31 +138,12 @@ head(df)
 # "arrange" function to order data.frame according 
 #  one/many index columns
 ##========================================================
-df %>%
+df_add_days2outcome %>%
   group_by(PATID) %>% 
   filter(n()>1) %>%
   arrange(PATID) %>%
   ungroup
 ```
-
-
-
-```{r}
-##========================================================
-# "group_by"+"filter" to de-duplicate
-##========================================================
-df<-df %>%
-  group_by(PATID) %>%
-  filter(DAYS_ALS1DX_TO_DEATH == min(DAYS_ALS1DX_TO_DEATH) | is.na(DAYS_ALS1DX_TO_DEATH)) %>%
-  ungroup
-
-df %>%
-  group_by(PATID) %>% 
-  filter(n()>1) %>%
-  arrange(PATID) %>%
-  ungroup
-```
-
 
 
 #### Data Cleaning - Missing Data 
@@ -151,7 +156,7 @@ df %>%
 # 
 # more on: https://finalfit.org/
 ##======================================================== 
-explanatory = c("SEX","RACE","AGE_AT_ALS1DX","RILUZ_DUR","RILUZ_IND")
+explanatory = c("SEX","RACE","AGE_AT_DX_DATE1","RILUZOLE_DUR","RILUZOLE_IND")
 dependent = 'MORT_IND'
 df %>%
   missing_pattern(dependent,explanatory)
@@ -171,16 +176,6 @@ df %>%
 ```
 
 
-```{r}
-df<-df %>%
-  replace_na(list(RILUZ_DUR=0))
-
-df %>%
-  missing_pattern(dependent,explanatory)
-```
-
-
-
 ### Data Transformation
 
 #### One-hot encoding 
@@ -194,6 +189,20 @@ race_ohe<-df %>%
   spread(RACE,ind, fill = 0)
 
 head(race_ohe)
+
+##=====================================================
+# "pivot_wide" is another popular function for table pivoting
+##=====================================================
+race_ohe2<-df %>% 
+  select(PATID,RACE) %>%
+  mutate(ind=1) %>%
+  pivot_wider(
+    names_from = RACE,
+    values_from = ind, 
+    values_fill = 0
+  )
+
+head(race_ohe2)
 ```
 
 ```{r}
@@ -201,11 +210,12 @@ head(race_ohe)
 # "rename" function for modifying column names
 ##=====================================================
 race_ohe<-race_ohe %>%
-  rename("RACE_white" = "03",
-         "RACE_black" = "05",
-         "RACE_OT" = "OT",
-         "RACE_UN" = "UN"
-         )
+  rename(
+    "RACE_white" = "03",
+    "RACE_black" = "05",
+    "RACE_OT" = "OT",
+    "RACE_UN" = "UN"
+  )
 
 head(race_ohe)
 ```
@@ -221,5 +231,5 @@ head(df)
 
 
 ```{r}
-saveRDS(df,file="C:/Users/Administrator/Documents/classHMI7001/data/df.rda")
+saveRDS(df,file="C:/Users/Administrator/Documents/proj/data/als_aset_ohe.rda")
 ```
