@@ -11,7 +11,7 @@ Let's do some preparation for the class by running the following chunk of codes:
 #install all the packages for this script
 pacman::p_load(
     tidyverse,# data cleaning packages
-    finalfit,mice # missing data detection and imputation
+    finalfit,VIM,mice # missing data detection and imputation packages
 )
 ```
 
@@ -79,7 +79,8 @@ df_only_agegrp<-df %>%
   select(PATID,AGEGRP)
 
 ggplot(df_only_agegrp,aes(x=AGEGRP))+
-  geom_bar(stat="count")
+  geom_bar(stat="count") +
+  
 ```
 
 
@@ -148,6 +149,47 @@ df_add_days2outcome %>%
 
 #### Data Cleaning - Missing Data 
 
+Current table is a bit too clean. Let's add another variable to make this exercise more practical
+```{r db_connection}
+pacman::p_load(DBI, odbc)
+# you can directly put your credential in the function
+ myconn <- DBI::dbConnect(
+    drv = odbc::odbc(),
+    dsn = "snowflake_deid",
+    uid = "xsm7f@umsystem.edu", 
+    pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
+) 
+ 
+bmi<-dbGetQuery(myconn,"select * from SHARED_DB.ALS.ALS_ELIG_BMI")
+head(bmi)
+```
+
+```{r}
+##========================================================
+# the "join", "right_join", and "left_join" function in R
+# looks quite similar to SQL, which can be used to join 
+# multiple tables together via primary key(s) specified in "by"
+##======================================================== 
+df_addbmi<-df %>%
+  left_join(
+    bmi,by="PATID"
+  )
+head(df_addbmi)
+```
+
+```{r}
+##========================================================
+# "VIM" package provides functions that help you quickly create 
+# elegant final results tables and plots, including an effective
+# way to look at missing patterns
+# 
+# more on: https://statistikat.github.io/VIM/index.html
+##======================================================== 
+aggr(df_addbmi) 
+
+```
+
+
 ```{r}
 ##========================================================
 # "finalfit" package provides functions that help you quickly create 
@@ -156,9 +198,9 @@ df_add_days2outcome %>%
 # 
 # more on: https://finalfit.org/
 ##======================================================== 
-explanatory = c("SEX","RACE","AGE_AT_DX_DATE1","RILUZOLE_DUR","RILUZOLE_IND")
+explanatory = c("SEX","RACE","AGE_AT_DX_DATE1","RILUZOLE_DUR","RILUZOLE_IND","BMI")
 dependent = 'MORT_IND'
-df %>%
+df_addbmi %>%
   missing_pattern(dependent,explanatory)
 ```
 
@@ -168,32 +210,56 @@ df %>%
 # "replace_na" function for quick imputation using
 # a constant value
 ##=====================================================
-df<-df %>%
+df_addbmi<-df_addbmi %>%
   replace_na(list(RACE='UN'))
 
-df %>%
+df_addbmi %>%
   missing_pattern(dependent,explanatory)
 ```
 
 
-### Data Transformation
+```{r}
+##========================================================
+# "mice" package provides functions that help you quickly  
+# take care of the imputing process  
+# more on: https://finalfit.org/
+##======================================================== 
+df_imp<- df_addbmi %>%
+  select(PATID,BMI,SEX,RACE,ETHNICITY,AGE_AT_DX_DATE1)
 
+df_addbmi_mice <- mice(
+  df_imp,
+  m=5, # number of imputed datasets
+  maxit=50, # iterations for each imputation
+  meth='pmm', # method for imputation
+  seed=1, # reproducible
+  printFlag = FALSE # silence
+)
+
+xyplot(df_addbmi_mice,BMI~AGE_AT_DX_DATE1)
+densityplot(df_addbmi_mice)
+
+df_addbmi_imputed<-complete(df_addbmi_mice,1)
+```
+
+### Data Transformation
 #### One-hot encoding 
 ```{r}
 ##=====================================================
 # "spread" function for quick table pivoting
 ##=====================================================
-race_ohe<-df %>% 
+race_ohe<-df_addbmi_imputed %>% 
   select(PATID,RACE) %>%
   mutate(ind=1) %>%
   spread(RACE,ind, fill = 0)
 
 head(race_ohe)
 
+
 ##=====================================================
 # "pivot_wide" is another popular function for table pivoting
 ##=====================================================
-race_ohe2<-df %>% 
+race_ohe2<-df_addbmi_imputed %>% 
   select(PATID,RACE) %>%
   mutate(ind=1) %>%
   pivot_wider(
@@ -223,13 +289,12 @@ head(race_ohe)
 Let's add the numerical representations of one-hot encoded RACE columns, and form the final analytic set:
 
 ```{r}
-df<-df %>%
+df_addbmi_imputed<-df_addbmi_imputed %>%
   left_join(race_ohe,by="PATID")
 
-head(df)
+head(df_addbmi_imputed)
 ```
 
-
 ```{r}
-saveRDS(df,file="C:/Users/Administrator/Documents/proj/data/als_aset_ohe.rda")
+saveRDS(df,file="C:/Users/Administrator/Documents/proj/data/final_set.rda")
 ```

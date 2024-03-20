@@ -12,7 +12,8 @@ Preparation: report setup, load packages, load data
 knitr::opts_chunk$set(message=F,warning=F,fig.width=6, fig.height=3)
 pacman::p_load(
     tidyverse,
-    kableExtra
+    kableExtra,
+    tableone
 )
 aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
 ```
