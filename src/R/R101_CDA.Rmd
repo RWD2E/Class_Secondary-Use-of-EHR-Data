@@ -8,10 +8,13 @@ output: html_document
 Preparation: report setup, load packages, load data
 
 ```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,warning=F,fig.width=6, fig.height=3)
-pacman::p_load(tidyverse,epitools,rcompanion)
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+#load package and data
+pacman::p_load(
+  tidyverse,
+  epitools,
+  rcompanion
+)
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
 ```
 
 **************************************************************************************************
@@ -33,7 +36,7 @@ aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda"
 
 
 ```{r}
-tbl<-table(aset$SEX,aset$RILUZ_IND,dnn=list("SEX","Riluzole"))
+tbl<-table(aset$SEX,aset$RILUZOLE_IND,dnn=list("SEX","Riluzole"))
 tbl
 ```
 
@@ -67,23 +70,23 @@ rcompanion::cramerV(tbl)
 *two-sample t-statistics*
 
 ```{r}
-t.test(RILUZ_DUR ~ SEX, data = aset)
+t.test(RILUZOLE_DUR ~ SEX, data = aset)
 ```
 
 ```{r}
-t.test(RILUZ_DUR ~ SEX, data = aset, alternative="greater")
+t.test(RILUZOLE_DUR ~ SEX, data = aset, alternative="greater")
 ```
 
 *ANOVA*
 
 ```{r}
-summary(aov(RILUZ_DUR ~ SEX,data=aset))
+summary(aov(RILUZOLE_DUR ~ SEX,data=aset))
 ```
 
 *Kruskal-Wallis Test*
 
 ```{r}
-kruskal.test(RILUZ_DUR ~ SEX,data=aset)
+kruskal.test(RILUZOLE_DUR ~ SEX,data=aset)
 ```
 
 
@@ -94,18 +97,18 @@ kruskal.test(RILUZ_DUR ~ SEX,data=aset)
 *Pearson Correlation Coefficient*
 
 ```{r}
-cor.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="pearson")
+cor.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR,method="pearson")
 ```
 
 
 *Spearman Correlation Coefficient*
 
 ```{r}
-cor.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="spearman")
+cor.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR,method="spearman")
 ```
 
 *Kolmogorov-Smirnov Tests*
 
 ```{r}
-ks.test(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR)
+ks.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR)
 ```
