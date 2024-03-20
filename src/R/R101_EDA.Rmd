@@ -8,41 +8,15 @@ output: html_document
 Preparation: report setup, load packages, load data
 
 ```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,warning=F,fig.width=6, fig.height=3)
+#load package and data
 pacman::p_load(
     tidyverse,
     kableExtra,
     tableone
 )
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
 ```
 
-
-**************************************************************************************************
-
-## Exploratory Data Analysis (EDA)
-
-EDA:  refers to a set of procedures for producing descriptive and graphical summary of the data. The term is developed by John Tukey: “The best single device for suggesting, and at times answering questions beyond those originally posed is the graphical display”. The primary aim of EDA is to:
-
-* **Maximize insight** into the database/understand the database structure
-* **Visualize potential relationships** (direction and magnitude) between exposure and outcome variables
-* **Detect outliers and anomalies** (values that are significantly different from the other observations)
-* **Extract and create clinically** relevant variables.
-
-**************************************************************************************************
-
-### Categorical Data/Variables 
-```{r}
-aset<-aset %>%
-  mutate(AGEGRP=case_when(AGE_AT_ALS1DX<65~'AgeGrp1',
-                          AGE_AT_ALS1DX>=65&AGE_AT_ALS1DX<70~'AgeGrp2',
-                          AGE_AT_ALS1DX>=70&AGE_AT_ALS1DX<75~'AgeGrp3',
-                          AGE_AT_ALS1DX>=75&AGE_AT_ALS1DX<80~'AgeGrp4',
-                          TRUE ~'AgeGrp5'))
-
-head(aset)
-```
 #### Univariate EDA
 
 ##### Non-Graphical Methods
@@ -72,6 +46,35 @@ uni_freq_tbl<- aset %>%
 kable(uni_freq_tbl,
       col.names = c("RACE","Frequency","Relative Frequency(%)"),
       caption="Frequency Table of Racial Groups")
+```
+
+
+```{r}
+##==============================================
+# the "tableone" package provides more convenient
+# functions to generate summaries for multiple columns
+# at once
+#
+# ref: https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
+##==============================================
+
+## Vector of variables to summarize
+myVars <- c(
+  "SEX","RACE","AGE_GRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c(
+  "SEX","RACE","AGE_GRP","RILUZOLE_IND","OUTCOME_STATUS"
+)
+
+## Create a TableOne object
+tab <- CreateTableOne(
+  data = aset,
+  vars = myVars,  
+  factorVars = catVars
+)
+tab
 ```
 
 
@@ -134,6 +137,35 @@ prop.table(bivar_freq_tbl,margin=1)
 prop.table(bivar_freq_tbl,margin=2)
 ```
 
+
+```{r}
+##==============================================
+# the "tableone" package provides more convenient
+# functions to generate summaries for multiple columns
+# at once
+#
+# ref: https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html
+##==============================================
+
+## Vector of variables to summarize
+myVars <- c(
+  "SEX","RACE","AGE_GRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c(
+  "SEX","RACE","AGE_GRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
+)
+
+## Create a TableOne object
+tab2 <- CreateTableOne(
+  data = pbc,
+  vars = myVars,  
+  factorVars = catVars,
+  strata = "RILUZOLE_IND"
+)
+tab2
+```
 
 ##### Graphical Method
 
