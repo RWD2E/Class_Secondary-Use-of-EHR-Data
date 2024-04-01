@@ -149,17 +149,17 @@ prop.table(bivar_freq_tbl,margin=2)
 
 ## Vector of variables to summarize
 myVars <- c(
-  "SEX","RACE","AGE_GRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
+  "SEX","RACE","AGEGRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
 )
 
 ## Vector of categorical variables that need transformation
 catVars <- c(
-  "SEX","RACE","AGE_GRP","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","OUTCOME_STATUS"
+  "SEX","RACE","AGEGRP","RILUZOLE_IND","OUTCOME_STATUS"
 )
 
 ## Create a TableOne object
 tab2 <- CreateTableOne(
-  data = pbc,
+  data = aset,
   vars = myVars,  
   factorVars = catVars,
   strata = "RILUZOLE_IND"
