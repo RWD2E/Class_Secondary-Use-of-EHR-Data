@@ -308,9 +308,6 @@ head(df2)
 ```
 
 
-
-
-
 ```{r}
 saveRDS(df2,file="C:/Users/Administrator/Documents/proj/data/final_set2.rda")
 ```
