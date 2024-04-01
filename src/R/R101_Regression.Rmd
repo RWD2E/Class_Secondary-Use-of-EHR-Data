@@ -12,7 +12,7 @@ Let's do some preparation for the class by running the following chunk of codes
 pacman::p_load(tidyverse,pROC)
 
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda")
 ```
 
 
@@ -77,7 +77,10 @@ ggplot(data=resid_dat,aes(sample=residual))+
 
 
 ```{r}
-ggplot(aset %>% filter(RILUZOLE_DUR > 0), aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
+ggplot(
+  aset %>% filter(RILUZOLE_DUR > 0),
+  aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR)
+)+
   geom_point()+
   geom_smooth(method="loess",formula = 'y~x')
 ```
@@ -135,18 +138,9 @@ Now, let's look at another question or interest:
 
 > To estimate if there is an association between `AGE_AT_DX_DATE1` and `MORT_1YR`
 
-
-Notice that there are a few patients who we lost of follow-up (i.e., censored before 1 year mark)
-
 ```{r}
-aset %>%
-  filter(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365)
-```
-
-
-```{r}
-aset2<-aset %>% 
-  filter(!(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365))
+aset<-aset %>%
+  mutate(MORT_1YR = case_when(OUTCOME_STATUS==1&DAYS_ALS1DX_TO_OUTCOME<=365~1,TRUE~0))
 ```
 
 
