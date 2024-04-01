@@ -8,14 +8,11 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes
 
 ```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,warning=F,fig.width=8, fig.height=5)
-
 #load packages
 pacman::p_load(tidyverse,pROC)
 
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda")
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
 ```
 
 
@@ -24,17 +21,17 @@ aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda"
 Linear regression provides the foundation for many types of analyses we perform on health data. In the simplest scenario, we try to relate one continuous outcome, `y`, to a single continuous covariate, `x`, by trying to find values for `b0` and `b1` so that: 
 `y = b0 + b1*x`. 
 
-> To estimate if `AGE_AT_ALS1DX` is associated with `RILUZ_DUR`; the younger you are, the more likely you will be exposed to Riluzole longer? 
+> To estimate if `AGE_AT_DX_DATE1` is associated with `RILUZOLE_DUR`; the younger you are, the more likely you will be exposed to Riluzole longer? 
 
 ```{r}
-ggplot(aset, aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
   geom_point()+
   geom_smooth(method="loess",formula = 'y~x')
 ```
 
 
 ```{r}
-fit1<-glm(RILUZ_DUR ~ AGE_AT_ALS1DX, 
+fit1<-glm(RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
           data=aset)
 
 #model summary
@@ -55,7 +52,7 @@ However, there are three assumptions for regression analysis which you need to c
 
 ```{r,fig.height=4}
 # values needed for model diagnostics
-resid_dat<-data.frame(actual=fit1$data$RILUZ_DUR,
+resid_dat<-data.frame(actual=fit1$data$RILUZOLE_DUR,
                       predicted=fit1$fitted.values,
                       residual=fit1$residuals)
 
@@ -80,15 +77,15 @@ ggplot(data=resid_dat,aes(sample=residual))+
 
 
 ```{r}
-ggplot(aset %>% filter(RILUZ_DUR > 0), aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+ggplot(aset %>% filter(RILUZOLE_DUR > 0), aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
   geom_point()+
   geom_smooth(method="loess",formula = 'y~x')
 ```
 
 
 ```{r}
-fit2<-glm(RILUZ_DUR ~ AGE_AT_ALS1DX, 
-          data=aset %>% filter(RILUZ_DUR > 0),
+fit2<-glm(RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
+          data=aset %>% filter(RILUZOLE_DUR > 0),
           family = 'poisson')
 
 #model summary
@@ -101,7 +98,7 @@ confint(fit2)
 
 
 ```{r}
-resid_dat<-data.frame(actual=fit2$data$RILUZ_DUR,
+resid_dat<-data.frame(actual=fit2$data$RILUZOLE_DUR,
                       predicted=fit2$fitted.values,
                       residual=fit2$residuals)
 
@@ -136,7 +133,7 @@ summary.lm(fit2)
 
 Now, let's look at another question or interest: 
 
-> To estimate if there is an association between `AGE_AT_ALS1DX` and `MORT_1YR`
+> To estimate if there is an association between `AGE_AT_DX_DATE1` and `MORT_1YR`
 
 
 Notice that there are a few patients who we lost of follow-up (i.e., censored before 1 year mark)
@@ -154,14 +151,14 @@ aset2<-aset %>%
 
 
 ```{r}
-ggplot(aset2, aes(x=AGE_AT_ALS1DX,y=MORT_1YR))+
+ggplot(aset2, aes(x=AGE_AT_DX_DATE1,y=MORT_1YR))+
   geom_point()+
   geom_smooth(method="loess",formula = 'y~x')
 ```
 
 
 ```{r}
-fit3<-glm(MORT_1YR ~ AGE_AT_ALS1DX, data=aset2,family='binomial') 
+fit3<-glm(MORT_1YR ~ AGE_AT_DX_DATE1, data=aset2,family='binomial') 
 summary(fit3)
 ```
 
