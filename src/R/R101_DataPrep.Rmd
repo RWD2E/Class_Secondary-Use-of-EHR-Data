@@ -49,6 +49,8 @@ df_add_agegrp<-df %>%
   )
 #print first 6 rows
 head(df_add_agegrp)
+
+tail(df_add_agegrp)
 ```
 
 
@@ -79,7 +81,7 @@ df_only_agegrp<-df %>%
   select(PATID,AGEGRP)
 
 ggplot(df_only_agegrp,aes(x=AGEGRP))+
-  geom_bar(stat="count") +
+  geom_bar(stat="count")
   
 ```
 
@@ -121,9 +123,18 @@ General steps for data preprocessing are **Data Integration**, **Data Abstractio
 df_add_days2outcome<-df %>%
   mutate(OUTCOME_DATE_TRUNC = floor_date(OUTCOME_DATE,'day')) %>%
   mutate(DX_DATE1_TRUNC = floor_date(DX_DATE1,'day')) %>%
-  mutate(DAYS_ALS1DX_TO_OUTCOME = difftime(lubridate::ymd(OUTCOME_DATE_TRUNC), lubridate::ymd(DX_DATE1_TRUNC), units = "days"))
+  mutate(DAYS_ALS1DX_TO_OUTCOME = difftime(lubridate::ymd(OUTCOME_DATE_TRUNC), lubridate::ymd(DX_DATE1_TRUNC), units = "days")) %>%
+  mutate(DAYS_ALS1DX_TO_OUTCOME = as.numeric(DAYS_ALS1DX_TO_OUTCOME))
 
 head(df_add_days2outcome)
+
+df<-df %>%
+  mutate(OUTCOME_DATE_TRUNC = floor_date(OUTCOME_DATE,'day')) %>%
+  mutate(DX_DATE1_TRUNC = floor_date(DX_DATE1,'day')) %>%
+  mutate(DAYS_ALS1DX_TO_OUTCOME = difftime(lubridate::ymd(OUTCOME_DATE_TRUNC), lubridate::ymd(DX_DATE1_TRUNC), units = "days")) %>%
+  mutate(DAYS_ALS1DX_TO_OUTCOME = as.numeric(DAYS_ALS1DX_TO_OUTCOME))
+
+head(df)
 ```
 
 **********************************************************************************
@@ -185,7 +196,7 @@ head(df_addbmi)
 # 
 # more on: https://statistikat.github.io/VIM/index.html
 ##======================================================== 
-aggr(df_addbmi) 
+aggr(df_addbmi[,c("HT","WT","BMI","SEX","RACE","ETHNICITY","OUTCOME_STATUS","RILUZOLE_IND")]) 
 
 ```
 
@@ -211,7 +222,7 @@ df_addbmi %>%
 # a constant value
 ##=====================================================
 df_addbmi<-df_addbmi %>%
-  replace_na(list(RACE='UN'))
+  replace_na(list(RACE='UN',ETHNICITY='UN'))
 
 df_addbmi %>%
   missing_pattern(dependent,explanatory)
@@ -222,7 +233,6 @@ df_addbmi %>%
 ##========================================================
 # "mice" package provides functions that help you quickly  
 # take care of the imputing process  
-# more on: https://finalfit.org/
 ##======================================================== 
 df_imp<- df_addbmi %>%
   select(PATID,BMI,SEX,RACE,ETHNICITY,AGE_AT_DX_DATE1)
@@ -240,6 +250,7 @@ xyplot(df_addbmi_mice,BMI~AGE_AT_DX_DATE1)
 densityplot(df_addbmi_mice)
 
 df_addbmi_imputed<-complete(df_addbmi_mice,1)
+head(df_addbmi_imputed)
 ```
 
 ### Data Transformation
@@ -277,8 +288,8 @@ head(race_ohe2)
 ##=====================================================
 race_ohe<-race_ohe %>%
   rename(
-    "RACE_white" = "03",
-    "RACE_black" = "05",
+    "RACE_white" = "05",
+    "RACE_black" = "03",
     "RACE_OT" = "OT",
     "RACE_UN" = "UN"
   )
@@ -289,12 +300,17 @@ head(race_ohe)
 Let's add the numerical representations of one-hot encoded RACE columns, and form the final analytic set:
 
 ```{r}
-df_addbmi_imputed<-df_addbmi_imputed %>%
+df2<-df %>%
+  left_join(df_addbmi_imputed %>% select(PATID,BMI),by="PATID") %>%
   left_join(race_ohe,by="PATID")
 
-head(df_addbmi_imputed)
+head(df2)
 ```
 
+
+
+
+
 ```{r}
-saveRDS(df,file="C:/Users/Administrator/Documents/proj/data/final_set.rda")
+saveRDS(df2,file="C:/Users/Administrator/Documents/proj/data/final_set2.rda")
 ```
