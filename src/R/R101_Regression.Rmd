@@ -87,16 +87,16 @@ ggplot(
 
 
 ```{r}
-fit2<-glm(RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
-          data=aset %>% filter(RILUZOLE_DUR > 0),
-          family = 'poisson')
+fit2<-glm(
+  RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
+  data=aset %>% filter(RILUZOLE_DUR > 0),
+)
 
 #model summary
 summary.lm(fit2)
 
 #confidence interval of coefficients
 confint(fit2)
-
 ```
 
 
@@ -127,6 +127,19 @@ summary.lm(fit2)
 ```
 
 
+*******************************************************************************************************************
+
+**Result Interpretation**
+
+```{r}
+coef(fit2)
+```
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.8 days in the use of Riluzole. 
+
+```{r}
+confint(fit2)
+```
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.8 (95% CI: 0.5, 21.1) days in the use of Riluzole. 
 
 *******************************************************************************************************************
 *******************************************************************************************************************
@@ -145,14 +158,14 @@ aset<-aset %>%
 
 
 ```{r}
-ggplot(aset2, aes(x=AGE_AT_DX_DATE1,y=MORT_1YR))+
+ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=MORT_1YR))+
   geom_point()+
   geom_smooth(method="loess",formula = 'y~x')
 ```
 
 
 ```{r}
-fit3<-glm(MORT_1YR ~ AGE_AT_DX_DATE1, data=aset2,family='binomial') 
+fit3<-glm(MORT_1YR ~ AGE_AT_DX_DATE1, data=aset,family='binomial') 
 summary(fit3)
 ```
 
@@ -161,28 +174,29 @@ summary(fit3)
 
 **Goodness of fit**
 
-* Predictions: in logistic regression, the predictions are the _predicted probabilities_ of your target event (outcome).
+* Predictions: in logistic regression, the predictions are the _predicted/estimated/fitted probabilities_ of your target event (outcome).
 
 ```{r pred}
 # values needed for model diagnostics
-resid_dat<-data.frame(actual=fit3$data$MORT_1YR,
-                       predicted=fit3$fitted.values,
-                       residual=fit3$residuals)
+resid_dat<-data.frame(
+  actual=fit3$data$MORT_1YR,
+  predicted=fit3$fitted.values,
+  residual=fit3$residuals
+)
 
-table(resid_dat$predicted)
+resid_dat %>% arrange(predicted)
 ```
 
 Let's create a rule to further classify the predictions: if predicted probability >= 0.2, then MORT_1YR = 1; otherwise, MORT_1YR = 0. Then, my final *confusion matrix* (or *error matrix*) will be: 
 
 ```{r}
 resid_dat<-resid_dat %>% 
-  mutate(MORT_1YR_hat=case_when(predicted>=0.2 ~ 1,
-                               TRUE ~ 0))
+  mutate(MORT_1YR_hat=case_when(predicted>=0.2 ~ 1,TRUE ~ 0))
 confusion_matrix<-table(resid_dat$MORT_1YR_hat,resid_dat$actual,
                         dnn=list("predicted","Actual"))
-
 confusion_matrix
 ```
+
 
 ```{r}
 TP<-confusion_matrix[2,2]
@@ -206,8 +220,11 @@ ppv<-TP/pos
 ppv
 ```
 
+However, all the above metrics and confusion matrix is determined by what threshold rule I chose. What if I used a different rule to classify the predictions: if predicted probability >= 0.3, then MORT_1YR = 1; otherwise, MORT_1YR = 0.What will the above GoF metrics change to? 
 
-* Area under reciever operating curve (AUROC, AUC, ROC): 
+
+*Area under reciever operating curve (AUROC, AUC, ROC)*
+- Average sensitivity over all possible values of specificity
 
 ```{r}
 fit3_roc<-pROC::roc(resid_dat$actual, resid_dat$predicted)
@@ -224,4 +241,24 @@ ggplot(full_roc,aes(y=sensitivity, x=1-specificity))+
   geom_point(size=2)+ geom_line()+geom_abline(linetype=2)+
   labs(subtitle = paste0("AUC:",round(fit3_roc$auc,4)))
 ```
+
+
+*******************************************************************************************************************
+
+**Result Interpretation**
+
+```{r}
+coef(fit3)
+exp(coef(fit3))
+```
+On average, every 1-year increase in AGE_AT_DX_DATE1 (age at first diagnosis) will increase the odds of death within 1 year by xxx folds. 
+
+```{r}
+confint(fit3)
+exp(confint(fit3))
+```
+On average, every 1-year increase in AGE_AT_DX_DATE1 (age at first diagnosis) will increase the odds of death within 1 year by xxx folds (95% CI,xxx - xxx). 
+
+
+
 

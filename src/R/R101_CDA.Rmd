@@ -11,10 +11,11 @@ Preparation: report setup, load packages, load data
 #load package and data
 pacman::p_load(
   tidyverse,
+  tableone,
   epitools,
   rcompanion
 )
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda")
 ```
 
 **************************************************************************************************
@@ -34,10 +35,25 @@ aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
 
 > Motivating Hypothesis: whether there is a difference of Riluzole use between males and females? 
 
-
 ```{r}
-tbl<-table(aset$SEX,aset$RILUZOLE_IND,dnn=list("SEX","Riluzole"))
-tbl
+## Vector of variables to summarize
+myVars <- c(
+  "SEX"
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c(
+  "SEX"
+)
+
+## Create a TableOne object
+tab <- CreateTableOne(
+  data = aset,
+  vars = myVars,  
+  factorVars = catVars,
+  strata = "RILUZOLE_IND"
+)
+tab
 ```
 
 *Odds Ratio*
@@ -45,6 +61,12 @@ tbl
 Or use existing package, which usually produced more results, such as
 
 *Fisher Exact Test, Mid-p Test, or Chi-Squared test*
+
+```{r}
+tbl<-table(aset$SEX,aset$RILUZOLE_IND,dnn=list("SEX","RILUZOLE_IND"))
+tbl
+```
+
 
 ```{r}
 epitools::oddsratio(tbl)
@@ -97,18 +119,18 @@ kruskal.test(RILUZOLE_DUR ~ SEX,data=aset)
 *Pearson Correlation Coefficient*
 
 ```{r}
-cor.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR,method="pearson")
+cor.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="pearson")
 ```
 
 
 *Spearman Correlation Coefficient*
 
 ```{r}
-cor.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR,method="spearman")
+cor.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="spearman")
 ```
 
 *Kolmogorov-Smirnov Tests*
 
 ```{r}
-ks.test(aset$AGE_AT_ALS1DX,aset$RILUZOLE_DUR)
+ks.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR)
 ```
