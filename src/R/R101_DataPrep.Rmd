@@ -302,11 +302,11 @@ Let's add the numerical representations of one-hot encoded RACE columns, and for
 ```{r}
 df2<-df %>%
   left_join(df_addbmi_imputed %>% select(PATID,BMI),by="PATID") %>%
-  left_join(race_ohe,by="PATID")
+  left_join(race_ohe,by="PATID") %>%
+  replace_na(list(RACE='UN',ETHNICITY='UN'))
 
 head(df2)
 ```
-
 
 ```{r}
 saveRDS(df2,file="C:/Users/Administrator/Documents/proj/data/final_set2.rda")
