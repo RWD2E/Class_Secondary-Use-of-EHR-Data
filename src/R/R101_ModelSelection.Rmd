@@ -8,21 +8,11 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes
 
 ```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,
-                      warning=F,
-                      echo=F,
-                      fig.width=12,
-                      fig.height=10)
-
 #load packages
-pacman::p_load(tidyverse,pROC,leaps)
+pacman::p_load(tidyverse,pROC)
 
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
-  filter(!(is.na(MORT_1YR) & is.na(DAYS_ALS1DX_TO_DEATH) & DAYS_ALS1DX_TO_CENSOR <= 365)) %>%
-  mutate(SEX_F = case_when(SEX=='F' ~ 1,
-                           TRUE ~ 0))
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda")
 ```
 
 **************************************************************************************************
@@ -37,7 +27,7 @@ We built one logistic regression model, with only age as the predictor:
 $$ Model 1: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX $$
 
 ```{r}
-fit1<-glm(MORT_1YR ~ AGE_AT_ALS1DX, data=aset, family=binomial())
+fit1<-glm(MORT_1YR ~ AGE_AT_DX_DATE1, data=aset, family=binomial())
 summary(fit1)
 ```
 
@@ -46,7 +36,7 @@ Let's try add in another variable: SEX_F
 $$ Model 2: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX + b2*SEX\_F $$
 
 ```{r}
-fit2<-glm(MORT_1YR ~ AGE_AT_ALS1DX + SEX_F, data=aset, family=binomial())
+fit2<-glm(MORT_1YR ~ AGE_AT_DX_DATE1 + SEX_F, data=aset, family=binomial())
 summary(fit2)
 
 anova(fit1,fit2,test="LRT")
@@ -54,16 +44,16 @@ anova(fit1,fit2,test="LRT")
 
 What happens if we add `RILUZ_IND` to the model, such that
 
-$$ Model 3: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX + b2*SEX\_F + b3*RILUZ\_IND $$
+$$ Model 3: MORT\_1YR = b0 + b1*AGE\_AT\_ALS1DX + b2*SEX\_F + b3*RILUZOLE\_IND $$
 
 ```{r}
-fit3<-glm(MORT_1YR ~ AGE_AT_ALS1DX + SEX_F + RILUZ_IND, data=aset, family=binomial())
+fit3<-glm(MORT_1YR ~ AGE_AT_DX_DATE1 + SEX_F + RILUZOLE_IND, data=aset, family=binomial())
 summary(fit3)
 
 anova(fit2,fit3,test="LRT")
 ```
 
-Should we keep `SEX_F` and `RILUZ_IND` in the final model, then? Should we add other covariates to the model in order to achieve better performance? There is a systemetic way to `scan` all relavent covariates independently or sequentially, to identify the set of covariates that are more likely to be associate with the outcome than the others. 
+Should we keep `SEX_F` and `RILUZOLE_IND` in the final model, then? Should we add other covariates to the model in order to achieve better performance? There is a systemetic way to `scan` all relavent covariates independently or sequentially, to identify the set of covariates that are more likely to be associate with the outcome than the others. 
 
 
 ## Feature Selection
@@ -79,18 +69,21 @@ Should we keep `SEX_F` and `RILUZ_IND` in the final model, then? Should we add o
 * Step 2: Calculate the measure for each one of the variable/feature and rank them from the highest to the lowest.
 
 ```{r}
-var_to_be_filtered<-c("AGE_AT_ALS1DX ",
-                      "SEX_F",
-                      "RILUZ_IND",
-                      "RILUZ_DUR",
-                      "RACE_black",
-                      "RACE_white",
-                      "RACE_OT",
-                      "RACE_UN")
+var_to_be_filtered<-c(
+  "AGE_AT_DX_DATE1 ",
+  "SEX_F",
+  "RILUZOLE_IND",
+  "RILUZOLE_DUR",
+  "RACE",
+  "ETHNICITY",
+  "BMI"
+)
 
-odds_ratio<-data.frame(variable=as.character(),
-                       odds_ratio=as.numeric(),
-                       p_value=as.numeric())
+odds_ratio<-data.frame(
+  variable=as.character(),
+  odds_ratio=as.numeric(),
+  p_value=as.numeric()
+)
 
 for (vari in var_to_be_filtered){
   cat("test variable:",vari,"\n")
@@ -125,9 +118,12 @@ var_selected<-odds_ratio %>%
 var_selected
 ```
 
+
 ```{r}
-fit_filter<-glm(MORT_1YR ~ AGE_AT_ALS1DX + RILUZ_DUR, 
-                data = aset, family = binomial())
+fit_filter<-glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1 + RILUZOLE_IND+RILUZOLE_DUR+BMI, 
+  data = aset, family = binomial()
+)
 summary(fit_filter)
 ```
 
@@ -157,51 +153,74 @@ pROC::ggroc(list(Model1=fit3_roc,
 
 ```{r}
 # Specify a null model with no predictors
-null_model <- glm(MORT_1YR ~ 1, 
-                  data = aset, family = binomial())
+null_model <- glm(
+  MORT_1YR ~ 1, 
+  data = aset, 
+  family = binomial()
+)
 
 # Specify the full model using all of the potential predictors
-full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
-                  data = aset, family = binomial())
+full_model <- glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1+ SEX_F+RILUZOLE_IND+RILUZOLE_DUR+RACE+BMI, 
+  data = aset, 
+  family = binomial()
+)
 
 # Use a forward stepwise algorithm to build a parsimonious model
-step_model <- step(null_model,
-                   scope = list(lower = null_model, upper = full_model),
-                   direction = "forward")
+step_model <- step(
+  null_model,
+  scope = list(lower = null_model, upper = full_model),
+  direction = "forward"
+)
 ```
 
 
 ```{r}
 # Estimate the stepwise predictted probability
-fit_forward<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
-                  data = aset, family = binomial())
-
+fit_forward<-glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1 + RILUZOLE_DUR + RILUZOLE_IND + BMI, 
+  data = aset, 
+  family = binomial()
+)
 summary(fit_forward)
 ```
+
+
 
 * Backward Regression (Recursive Feature Elimination)
 
 ```{r}
 # Specify a null model with no predictors
-null_model <- glm(MORT_1YR ~ 1, 
-                  data = aset, family = binomial())
+null_model <- glm(
+  MORT_1YR ~ 1, 
+  data = aset, 
+  family = binomial()
+)
 
 # Specify the full model using all of the potential predictors
-full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
-                  data = aset, family = binomial())
+full_model <- glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1+ SEX_F+RILUZOLE_IND+RILUZOLE_DUR+RACE+BMI, 
+  data = aset, 
+  family = binomial()
+)
 
 # Use a forward stepwise algorithm to build a parsimonious model
-step_model <- step(full_model,
-                   scope = list(lower = null_model, upper = full_model),
-                   direction = "backward")
+step_model <- step(
+  full_model,
+  scope = list(lower = null_model, upper = full_model),
+  direction = "backward"
+)
 ```
 
 
 
 ```{r}
 # Estimate the stepwise predictted probability
-fit_backward<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
-                  data = aset, family = binomial())
+fit_backward<-glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR + BMI,
+  data = aset, 
+  family = binomial()
+)
 ```
 
 
@@ -209,33 +228,36 @@ fit_backward<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX,
 
 ```{r}
 # Specify a null model with no predictors
-null_model <- glm(MORT_1YR ~ 1, 
-                  data = aset, family = binomial())
+null_model <- glm(
+  MORT_1YR ~ 1, 
+  data = aset, 
+  family = binomial()
+)
 
 # Specify the full model using all of the potential predictors
-full_model <- glm(MORT_1YR ~ AGE_AT_ALS1DX+ SEX_F+RILUZ_IND+RILUZ_DUR+RACE_black+RACE_OT+RACE_UN, 
-                  data = aset, family = binomial())
+full_model <- glm(
+  MORT_1YR ~ AGE_AT_DX_DATE1+ SEX_F+RILUZOLE_IND+RILUZOLE_DUR+RACE+BMI, 
+  data = aset, 
+  family = binomial()
+)
 
 # Use a bi-directional stepwise algorithm to build a parsimonious model
-step_model <- step(null_model,
-                   scope = list(lower = null_model, upper = full_model),
-                   direction = "both")
+step_model <- step(
+  null_model,
+  scope = list(lower = null_model, upper = full_model),
+  direction = "both"
+)
 ```
 
 
 
 ```{r}
 # Estimate the stepwise predictted probability
-fit_both<-glm(MORT_1YR ~ RILUZ_DUR + RILUZ_IND + AGE_AT_ALS1DX, 
-              data = aset, family = binomial())
-```
-
-Let's compare this model with fit_filter: 
-
-
-```{r}
-# compare their AUC
-anova(fit_filter,fit_both,test="LRT")
+fit_both<-glm(
+  RILUZOLE_DUR + RILUZOLE_IND + BMI + AGE_AT_DX_DATE1,
+  data = aset, 
+  family = binomial()
+)
 ```
 
 

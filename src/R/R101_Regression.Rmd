@@ -214,6 +214,7 @@ sensitivity
 specificity
 ```
 
+
 ```{r}
 pos<-TP+FP
 ppv<-TP/pos
@@ -258,7 +259,3 @@ confint(fit3)
 exp(confint(fit3))
 ```
 On average, every 1-year increase in AGE_AT_DX_DATE1 (age at first diagnosis) will increase the odds of death within 1 year by xxx folds (95% CI,xxx - xxx). 
-
-
-
-
