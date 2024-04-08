@@ -1,168 +1,672 @@
+Show in New Window
+Call:
+coxph(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset)
+
+  n= 278, number of events= 163 
+
+                      coef  exp(coef)   se(coef)      z Pr(>|z|)    
+AGE_AT_DX_DATE1  0.0290314  1.0294570  0.0074857  3.878 0.000105 ***
+RILUZOLE_IND     0.7030789  2.0199623  0.1750532  4.016 5.91e-05 ***
+RILUZOLE_DUR    -0.0006286  0.9993716  0.0002969 -2.117 0.034250 *  
 ---
-title: "Survival Analysis"
-author: "Xing Song"
-date: '2022-11-10'
-output: html_document
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+                exp(coef) exp(-coef) lower .95 upper .95
+AGE_AT_DX_DATE1    1.0295     0.9714    1.0145     1.045
+RILUZOLE_IND       2.0200     0.4951    1.4333     2.847
+RILUZOLE_DUR       0.9994     1.0006    0.9988     1.000
+
+Concordance= 0.645  (se = 0.024 )
+Likelihood ratio test= 35.99  on 3 df,   p=8e-08
+Wald test            = 34.37  on 3 df,   p=2e-07
+Score (logrank) test = 35.07  on 3 df,   p=1e-07
+
+Show in New Window
+Call:
+coxph(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR + tt(RILUZOLE_DUR), data = aset)
+
+  n= 275, number of events= 162 
+
+                       coef  exp(coef)   se(coef)      z Pr(>|z|)    
+AGE_AT_DX_DATE1   0.0298477  1.0302976  0.0074988  3.980 6.88e-05 ***
+RILUZOLE_IND      0.8327705  2.2996813  0.1825401  4.562 5.06e-06 ***
+RILUZOLE_DUR      0.0023863  1.0023891  0.0007581  3.148 0.001646 ** 
+tt(RILUZOLE_DUR) -0.2025423  0.8166520  0.0597970 -3.387 0.000706 ***
 ---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Let's do some preparation for the class by running the following chunk of codes
+                 exp(coef) exp(-coef) lower .95 upper .95
+AGE_AT_DX_DATE1     1.0303     0.9706    1.0153    1.0456
+RILUZOLE_IND        2.2997     0.4348    1.6080    3.2889
+RILUZOLE_DUR        1.0024     0.9976    1.0009    1.0039
+tt(RILUZOLE_DUR)    0.8167     1.2245    0.7263    0.9182
 
-```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,
-                      warning=F,
-                      echo=F,
-                      fig.width=6,
-                      fig.height=4)
+Concordance= 0.677  (se = 0.022 )
+Likelihood ratio test= 56.74  on 4 df,   p=1e-11
+Wald test            = 46.26  on 4 df,   p=2e-09
+Score (logrank) test = 36.72  on 4 df,   p=2e-07
 
-#load packages
-pacman::p_load(tidyverse,
-               survival,
-               survminer,
-               gtsummary)
-
-#load data
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
-  mutate(SEX_F = case_when(SEX=='F' ~ 1,
-                           TRUE ~ 0)) %>%
-  mutate(status=MORT_IND,
-         time=coalesce(DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR))
-```
+Show in New Window
 
 
-## Kaplan-Meier Curve
 
-Let's first get familiar with survival object. The `Surv()` function creates a survival object that contains three parts: a numerical part that is the survival time; a `+` or `:1` symbol suggesting the subject being censored or an event. For example,
+Show in New Window
 
-```{r}
-Surv(aset$time,aset$status)[1:10]
-```
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "exp")
+                    Value Std. Error     z       p
+(Intercept)      9.837431   0.507975 19.37 < 2e-16
+AGE_AT_DX_DATE1 -0.034194   0.007746 -4.41 1.0e-05
+RILUZOLE_IND    -0.864956   0.167623 -5.16 2.5e-07
+RILUZOLE_DUR     0.000491   0.000270  1.82   0.069
 
-```{r}
-km_fit<-survfit(Surv(time,status) ~ 1, data = aset)
-```
+Scale fixed at 1 
 
-### Estimate 𝑥-year survival, or life table
+Exponential distribution
+Loglik(model)= -1334.4   Loglik(intercept only)= -1360.9
+	Chisq= 53 on 3 degrees of freedom, p= 1.8e-11 
+Number of Newton-Raphson Iterations: 5 
+n= 275 
 
-```{r}
-summary(km_fit,times = 365.25*c(1:5))
-```
+Show in New Window
 
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "weib")
+                    Value Std. Error     z       p
+(Intercept)      9.975469   0.572357 17.43 < 2e-16
+AGE_AT_DX_DATE1 -0.036315   0.008719 -4.16 3.1e-05
+RILUZOLE_IND    -0.872478   0.191163 -4.56 5.0e-06
+RILUZOLE_DUR     0.000537   0.000313  1.72   0.086
+Log(scale)       0.129176   0.058424  2.21   0.027
 
-```{r}
-ggsurvplot(fit = km_fit,
-           pval = TRUE, conf.int = TRUE,risk.table = TRUE,
-           surv.median.line = "hv",linetype = "strata", 
-           xlab = "Days", break.x.by = 365*2,
-           ylab = "Mortality Endpoint")
-```
+Scale= 1.14 
 
-### Estimate median survival time
+Weibull distribution
+Loglik(model)= -1331.8   Loglik(intercept only)= -1352.6
+	Chisq= 41.63 on 3 degrees of freedom, p= 4.8e-09 
+Number of Newton-Raphson Iterations: 5 
+n= 275 
 
-```{r}
-survfit(Surv(time, status) ~ 1, data = aset) %>% 
-  tbl_survfit(
-    probs = 0.5,
-    label_header = "**Median survival (95% CI)**"
-  )
-```
+Show in New Window
 
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "logl")
+                    Value Std. Error     z       p
+(Intercept)      9.102525   0.510345 17.84 < 2e-16
+AGE_AT_DX_DATE1 -0.032969   0.007803 -4.23 2.4e-05
+RILUZOLE_IND    -0.834852   0.186653 -4.47 7.7e-06
+RILUZOLE_DUR     0.000942   0.000293  3.22  0.0013
+Log(scale)      -0.285633   0.065298 -4.37 1.2e-05
 
-### Stratified KM curves
+Scale= 0.752 
 
-```{r,fig.height=8,fig.width=12}
-ggsurvplot(
-    fit = survfit(Surv(time,status) ~ RILUZ_IND, data = aset),
-    pval = TRUE, conf.int = TRUE,risk.table = TRUE,
-    surv.median.line = "hv",linetype = "strata", 
-    xlab = "Days", break.x.by = 365,
-    ylab = "Mortality Endpoint")
-```
+Log logistic distribution
+Loglik(model)= -1316.9   Loglik(intercept only)= -1338.5
+	Chisq= 43.27 on 3 degrees of freedom, p= 2.2e-09 
+Number of Newton-Raphson Iterations: 4 
+n= 275 
 
+Show in New Window
 
-```{r,fig.height=8,fig.width=12}
-ggsurvplot(
-    fit = survfit(Surv(time,status) ~ SEX_F, data = aset),
-    pval = TRUE, conf.int = TRUE,risk.table = TRUE,
-    surv.median.line = "hv",linetype = "strata", 
-    xlab = "Days", break.x.by = 365,
-    ylab = "Mortality Endpoint")
-```
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "logn")
+                    Value Std. Error     z       p
+(Intercept)      9.231324   0.547462 16.86 < 2e-16
+AGE_AT_DX_DATE1 -0.035615   0.008361 -4.26 2.0e-05
+RILUZOLE_IND    -0.685608   0.197172 -3.48 0.00051
+RILUZOLE_DUR     0.000931   0.000333  2.79 0.00519
+Log(scale)       0.315457   0.056957  5.54 3.1e-08
 
+Scale= 1.37 
 
-## Cox Proportional Hazard Regression Model
+Log Normal distribution
+Loglik(model)= -1320.7   Loglik(intercept only)= -1338.5
+	Chisq= 35.48 on 3 degrees of freedom, p= 9.7e-08 
+Number of Newton-Raphson Iterations: 4 
+n= 275 
 
-```{r}
-ggplot(aset,aes(x=time))+
-  geom_density(aes(fill=as.factor(status)),alpha=0.5)
-```
+Show in New Window
+Description:df [5 × 2]
+ 
+ 
+df
+<dbl>
+AIC
+<dbl>
+aft_fit1	4	2676.843		
+aft_fit2	5	2673.551		
+aft_fit3	5	2643.808		
+aft_fit4	5	2651.424		
+cox_fit2	3	1536.688		
+5 rows
 
+R version 4.3.2 (2023-10-31 ucrt) -- "Eye Holes"
+Copyright (C) 2023 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64 (64-bit)
 
-```{r}
-cox_fit<-coxph(Surv(time, status) ~ RILUZ_IND, data = aset)
-summary(cox_fit)
-```
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
 
+  Natural language support but running in an English locale
 
-```{r}
-coxph(Surv(time, status) ~ RILUZ_IND, data = aset) %>% 
-  tbl_regression(exp = TRUE)
-```
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
 
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
 
-```{r}
-coxph(Surv(time, status) ~ SEX_F, data = aset) %>% 
-  tbl_regression(exp = TRUE)
-```
+> setwd("C:/Users/Administrator/Documents/proj")
+> #load packages
+> pacman::p_load(
++   tidyverse,
++   survival,
++   survminer,
++   gtsummary
++ )
+also installing the dependencies ‘commonmark’, ‘corrplot’, ‘markdown’, ‘png’, ‘jpeg’, ‘ggrepel’, ‘ggsci’, ‘cowplot’, ‘ggsignif’, ‘polynom’, ‘rstatix’, ‘exactRankTests’, ‘KMsurv’, ‘km.ci’, ‘xtable’, ‘gridtext’, ‘ggpubr’, ‘maxstat’, ‘survMisc’, ‘ggtext’
 
-```{r}
-cox_fit2<-coxph(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR , data = aset)
-summary(cox_fit2)
-```
+Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES.rds': HTTP status was '404 Not Found'Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES.gz': HTTP status was '404 Not Found'Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES': HTTP status was '404 Not Found'Warning: unable to access index for repository http://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3:
+  cannot open URL 'http://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES'trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/commonmark_1.9.1.zip'
+Content type 'application/zip' length 142409 bytes (139 KB)
+downloaded 139 KB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/corrplot_0.92.zip'
+Content type 'application/zip' length 3844884 bytes (3.7 MB)
+downloaded 3.7 MB
 
-### Model Diagnostics
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/markdown_1.12.zip'
+Content type 'application/zip' length 218106 bytes (212 KB)
+downloaded 212 KB
 
-```{r}
-res<-cox.zph(cox_fit2)
-plot(res)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/png_0.1-8.zip'
+Content type 'application/zip' length 193087 bytes (188 KB)
+downloaded 188 KB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/jpeg_0.1-10.zip'
+Content type 'application/zip' length 157064 bytes (153 KB)
+downloaded 153 KB
 
-## Accelerated Failure Time Model
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/ggrepel_0.9.5.zip'
+Content type 'application/zip' length 617106 bytes (602 KB)
+downloaded 602 KB
 
-```{r}
-aft_fit1<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
-              dist = "exp")
-summary(aft_fit1)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/ggsci_3.0.3.zip'
+Content type 'application/zip' length 2359730 bytes (2.3 MB)
+downloaded 2.3 MB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/cowplot_1.1.3.zip'
+Content type 'application/zip' length 1375010 bytes (1.3 MB)
+downloaded 1.3 MB
 
-```{r}
-aft_fit2<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
-              dist = "weib")
-summary(aft_fit2)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/ggsignif_0.6.4.zip'
+Content type 'application/zip' length 601934 bytes (587 KB)
+downloaded 587 KB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/polynom_1.4-1.zip'
+Content type 'application/zip' length 404424 bytes (394 KB)
+downloaded 394 KB
 
-```{r}
-aft_fit3<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
-              dist = "logl")
-summary(aft_fit3)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/rstatix_0.7.2.zip'
+Content type 'application/zip' length 607246 bytes (593 KB)
+downloaded 593 KB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/exactRankTests_0.8-35.zip'
+Content type 'application/zip' length 157160 bytes (153 KB)
+downloaded 153 KB
 
-```{r}
-aft_fit4<-survreg(Surv(time, status) ~ AGE_AT_ALS1DX + RILUZ_IND + RILUZ_DUR, data = aset,
-              dist = "logn")
-summary(aft_fit4)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/KMsurv_0.1-5.zip'
+Content type 'application/zip' length 128693 bytes (125 KB)
+downloaded 125 KB
 
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/km.ci_0.5-6.zip'
+Content type 'application/zip' length 69504 bytes (67 KB)
+downloaded 67 KB
 
-```{r}
-AIC(aft_fit1,
-    aft_fit2,
-    aft_fit3,
-    aft_fit4,
-    cox_fit2)
-```
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/xtable_1.8-4.zip'
+Content type 'application/zip' length 706192 bytes (689 KB)
+downloaded 689 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/gridtext_0.1.5.zip'
+Content type 'application/zip' length 691348 bytes (675 KB)
+downloaded 675 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/ggpubr_0.6.0.zip'
+Content type 'application/zip' length 2091124 bytes (2.0 MB)
+downloaded 2.0 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/maxstat_0.7-25.zip'
+Content type 'application/zip' length 180839 bytes (176 KB)
+downloaded 176 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/survMisc_0.5.6.zip'
+Content type 'application/zip' length 339199 bytes (331 KB)
+downloaded 331 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/ggtext_0.1.2.zip'
+Content type 'application/zip' length 1263055 bytes (1.2 MB)
+downloaded 1.2 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/survminer_0.4.9.zip'
+Content type 'application/zip' length 3229364 bytes (3.1 MB)
+downloaded 3.1 MB
+
+package ‘commonmark’ successfully unpacked and MD5 sums checked
+package ‘corrplot’ successfully unpacked and MD5 sums checked
+package ‘markdown’ successfully unpacked and MD5 sums checked
+package ‘png’ successfully unpacked and MD5 sums checked
+package ‘jpeg’ successfully unpacked and MD5 sums checked
+package ‘ggrepel’ successfully unpacked and MD5 sums checked
+package ‘ggsci’ successfully unpacked and MD5 sums checked
+package ‘cowplot’ successfully unpacked and MD5 sums checked
+package ‘ggsignif’ successfully unpacked and MD5 sums checked
+package ‘polynom’ successfully unpacked and MD5 sums checked
+package ‘rstatix’ successfully unpacked and MD5 sums checked
+package ‘exactRankTests’ successfully unpacked and MD5 sums checked
+package ‘KMsurv’ successfully unpacked and MD5 sums checked
+package ‘km.ci’ successfully unpacked and MD5 sums checked
+package ‘xtable’ successfully unpacked and MD5 sums checked
+package ‘gridtext’ successfully unpacked and MD5 sums checked
+package ‘ggpubr’ successfully unpacked and MD5 sums checked
+package ‘maxstat’ successfully unpacked and MD5 sums checked
+package ‘survMisc’ successfully unpacked and MD5 sums checked
+package ‘ggtext’ successfully unpacked and MD5 sums checked
+package ‘survminer’ successfully unpacked and MD5 sums checked
+
+The downloaded binary packages are in
+	C:\Users\Administrator\AppData\Local\Temp\2\RtmpWIrZ1M\downloaded_packages
+
+survminer installed
+Warning: package ‘survminer’ was built under R version 4.3.3Warning: package ‘ggpubr’ was built under R version 4.3.3also installing the dependencies ‘V8’, ‘reactR’, ‘bigD’, ‘bitops’, ‘htmlwidgets’, ‘juicyjuice’, ‘reactable’, ‘gt’
+
+Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES.rds': HTTP status was '404 Not Found'Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES.gz': HTTP status was '404 Not Found'Warning: downloaded length 0 != reported length 0Warning: cannot open URL 'https://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES': HTTP status was '404 Not Found'Warning: unable to access index for repository http://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3:
+  cannot open URL 'http://www.stats.ox.ac.uk/pub/RWin/bin/windows/contrib/4.3/PACKAGES'trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/V8_4.4.2.zip'
+Content type 'application/zip' length 8923186 bytes (8.5 MB)
+downloaded 8.5 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/reactR_0.5.0.zip'
+Content type 'application/zip' length 629110 bytes (614 KB)
+downloaded 614 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/bigD_0.2.0.zip'
+Content type 'application/zip' length 1158145 bytes (1.1 MB)
+downloaded 1.1 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/bitops_1.0-7.zip'
+Content type 'application/zip' length 31813 bytes (31 KB)
+downloaded 31 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/htmlwidgets_1.6.4.zip'
+Content type 'application/zip' length 812123 bytes (793 KB)
+downloaded 793 KB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/juicyjuice_0.1.0.zip'
+Content type 'application/zip' length 1127612 bytes (1.1 MB)
+downloaded 1.1 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/reactable_0.4.4.zip'
+Content type 'application/zip' length 1051782 bytes (1.0 MB)
+downloaded 1.0 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/gt_0.10.1.zip'
+Content type 'application/zip' length 4687533 bytes (4.5 MB)
+downloaded 4.5 MB
+
+trying URL 'https://cran.rstudio.com/bin/windows/contrib/4.3/gtsummary_1.7.2.zip'
+Content type 'application/zip' length 2017436 bytes (1.9 MB)
+downloaded 1.9 MB
+
+package ‘V8’ successfully unpacked and MD5 sums checked
+package ‘reactR’ successfully unpacked and MD5 sums checked
+package ‘bigD’ successfully unpacked and MD5 sums checked
+package ‘bitops’ successfully unpacked and MD5 sums checked
+package ‘htmlwidgets’ successfully unpacked and MD5 sums checked
+package ‘juicyjuice’ successfully unpacked and MD5 sums checked
+package ‘reactable’ successfully unpacked and MD5 sums checked
+package ‘gt’ successfully unpacked and MD5 sums checked
+package ‘gtsummary’ successfully unpacked and MD5 sums checked
+
+The downloaded binary packages are in
+	C:\Users\Administrator\AppData\Local\Temp\2\RtmpWIrZ1M\downloaded_packages
+
+gtsummary installed
+Warning: package ‘gtsummary’ was built under R version 4.3.3
+> 
+> #load data
+> aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
++   mutate(SEX_F = case_when(SEX=='F' ~ 1,
++                            TRUE ~ 0)) %>%
++   mutate(status=MORT_IND,
++          time=coalesce(DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR))
+Error in `mutate()`:
+ℹ In argument: `status = MORT_IND`.
+Caused by error:
+! object 'MORT_IND' not found
+Backtrace:
+ 1. ... %>% ...
+ 3. dplyr:::mutate.data.frame(...)
+ 4. dplyr:::mutate_cols(.data, dplyr_quosures(...), by)
+ 6. dplyr:::mutate_col(dots[[i]], data, mask, new_columns)
+ 7. mask$eval_all_mutate(quo)
+ 8. dplyr (local) eval()
+> aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
++   mutate(SEX_F = case_when(SEX=='F' ~ 1,
++                            TRUE ~ 0))
+> #load data
+> aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
++   mutate(SEX_F = case_when(SEX=='F' ~ 1,
++                            TRUE ~ 0)) %>%
++   mutate(status=OUTCOME_STATUS,
++          time=DAYS_ALS1DX_TO_OUTCOME))
+Error: unexpected ')' in:
+"  mutate(status=OUTCOME_STATUS,
+         time=DAYS_ALS1DX_TO_OUTCOME))"
+> #load data
+> aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
++   mutate(SEX_F = case_when(SEX=='F' ~ 1,
++                            TRUE ~ 0)) %>%
++   mutate(status=OUTCOME_STATUS,
++          time=DAYS_ALS1DX_TO_OUTCOME)
+> Surv(aset$time,aset$status)[1:10]
+ [1]  426+  519  2427+  657   695   213   368   266  3154+ 2537+
+> km_fit<-survfit(Surv(time,status) ~ 1, data = aset)
+> summary(km_fit,times = 365.25*c(1:5))
+Call: survfit(formula = Surv(time, status) ~ 1, data = aset)
+
+ time n.risk n.event survival std.err lower 95% CI upper 95% CI
+  365    161      69    0.721  0.0287        0.667        0.780
+  730     98      48    0.494  0.0336        0.432        0.564
+ 1096     72      15    0.413  0.0340        0.352        0.485
+ 1461     56       9    0.359  0.0340        0.298        0.432
+ 1826     36      12    0.277  0.0335        0.219        0.352
+> ggsurvplot(fit = km_fit,
++            pval = TRUE, conf.int = TRUE,risk.table = TRUE,
++            surv.median.line = "hv",linetype = "strata", 
++            xlab = "Days", break.x.by = 365*2,
++            ylab = "Mortality Endpoint")
+Warning: There are no survival curves to be compared. 
+ This is a null model.
+> survfit(Surv(time, status) ~ 1, data = aset) %>% 
++   tbl_survfit(
++     probs = 0.5,
++     label_header = "**Median survival (95% CI)**"
++   )
+> ggsurvplot(
++     fit = survfit(Surv(time,status) ~ RILUZ_IND, data = aset),
++     pval = TRUE, conf.int = TRUE,risk.table = TRUE,
++     surv.median.line = "hv",linetype = "strata", 
++     xlab = "Days", break.x.by = 365,
++     ylab = "Mortality Endpoint")
+Error in eval(predvars, data, env) : object 'RILUZ_IND' not found
+> res<-cox.zph(cox_fit2)
+Error: object 'cox_fit2' not found
+> survfit(
++   Surv(time, status) ~ 1, data = aset) %>% 
++   tbl_survfit(
++     probs = 0.5,
++     label_header = "**Median survival (95% CI)**"
++   )
+> ggsurvplot(
++     fit = survfit(Surv(time,status) ~ RILUZOLE_IND, data = aset),
++     pval = TRUE, conf.int = TRUE,risk.table = TRUE,
++     surv.median.line = "hv",linetype = "strata", 
++     xlab = "Days", break.x.by = 365,
++     ylab = "Mortality Endpoint")
+Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?
+> ggsurvplot(
++     fit = survfit(Surv(time,status) ~ SEX_F, data = aset),
++     pval = TRUE, conf.int = TRUE,risk.table = TRUE,
++     surv.median.line = "hv",linetype = "strata", 
++     xlab = "Days", break.x.by = 365,
++     ylab = "Mortality Endpoint")
+Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?Warning: All aesthetics have length 1, but the data has 2 rows.
+ℹ Did you mean to use `annotate()`?
+> ggplot(aset,aes(x=time))+
++   geom_density(aes(fill=as.factor(status)),alpha=0.5)
+> cox_fit<-coxph(Surv(time, status) ~ RILUZOLE_IND, data = aset)
+> summary(cox_fit)
+Call:
+coxph(formula = Surv(time, status) ~ RILUZOLE_IND, data = aset)
+
+  n= 278, number of events= 163 
+
+               coef exp(coef) se(coef)     z Pr(>|z|)    
+RILUZOLE_IND 0.5332    1.7045   0.1612 3.309 0.000936 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+             exp(coef) exp(-coef) lower .95 upper .95
+RILUZOLE_IND     1.704     0.5867     1.243     2.338
+
+Concordance= 0.559  (se = 0.022 )
+Likelihood ratio test= 10.91  on 1 df,   p=0.001
+Wald test            = 10.95  on 1 df,   p=9e-04
+Score (logrank) test = 11.18  on 1 df,   p=8e-04
+
+> coxph(Surv(time, status) ~ RILUZOLE_IND, data = aset) %>% 
++   tbl_regression(exp = TRUE)
+> coxph(Surv(time, status) ~ SEX_F, data = aset) %>% 
++   tbl_regression(exp = TRUE)
+> cox_fit2<-coxph(
++   Surv(time, status) ~ AGE_AT_ALS1DX + RILUZOLE_IND + RILUZOLE_DUR, 
++   data = aset
++ )
+Error in eval(predvars, data, env) : object 'AGE_AT_ALS1DX' not found
+> cox_fit2<-coxph(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR, 
++   data = aset
++ )
+> summary(cox_fit2)
+Call:
+coxph(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset)
+
+  n= 278, number of events= 163 
+
+                      coef  exp(coef)   se(coef)      z Pr(>|z|)    
+AGE_AT_DX_DATE1  0.0290314  1.0294570  0.0074857  3.878 0.000105 ***
+RILUZOLE_IND     0.7030789  2.0199623  0.1750532  4.016 5.91e-05 ***
+RILUZOLE_DUR    -0.0006286  0.9993716  0.0002969 -2.117 0.034250 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+                exp(coef) exp(-coef) lower .95 upper .95
+AGE_AT_DX_DATE1    1.0295     0.9714    1.0145     1.045
+RILUZOLE_IND       2.0200     0.4951    1.4333     2.847
+RILUZOLE_DUR       0.9994     1.0006    0.9988     1.000
+
+Concordance= 0.645  (se = 0.024 )
+Likelihood ratio test= 35.99  on 3 df,   p=8e-08
+Wald test            = 34.37  on 3 df,   p=2e-07
+Score (logrank) test = 35.07  on 3 df,   p=1e-07
+
+> res<-cox.zph(cox_fit2)
+> plot(res)
+> fit3<-coxph(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR + tt(RILUZOLE_DUR), 
++   data = aset
++ )
+Warning: Stop time must be > start time, NA created
+> summary(fit3)
+Call:
+coxph(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR + tt(RILUZOLE_DUR), data = aset)
+
+  n= 278, number of events= 163 
+
+                      coef exp(coef)  se(coef)      z Pr(>|z|)    
+AGE_AT_DX_DATE1   0.029006  1.029431  0.007452  3.892 9.94e-05 ***
+RILUZOLE_IND      0.815648  2.260639  0.181954  4.483 7.37e-06 ***
+RILUZOLE_DUR      0.002403  1.002406  0.000757  3.175 0.001499 ** 
+tt(RILUZOLE_DUR) -0.203302  0.816032  0.059719 -3.404 0.000663 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+                 exp(coef) exp(-coef) lower .95 upper .95
+AGE_AT_DX_DATE1      1.029     0.9714    1.0145    1.0446
+RILUZOLE_IND         2.261     0.4424    1.5825    3.2293
+RILUZOLE_DUR         1.002     0.9976    1.0009    1.0039
+tt(RILUZOLE_DUR)     0.816     1.2254    0.7259    0.9174
+
+Concordance= 0.648  (se = 0.023 )
+Likelihood ratio test= 55.47  on 4 df,   p=3e-11
+Wald test            = 45.02  on 4 df,   p=4e-09
+Score (logrank) test = 35.27  on 4 df,   p=4e-07
+
+> #load data
+> aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
++   mutate(SEX_F = case_when(SEX=='F' ~ 1,
++                            TRUE ~ 0)) %>%
++   mutate(status=OUTCOME_STATUS,
++          time=DAYS_ALS1DX_TO_OUTCOME) %>%
++   filter(time > 0)
+> fit3<-coxph(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR + tt(RILUZOLE_DUR), 
++   data = aset
++ )
+> summary(fit3)
+Call:
+coxph(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR + tt(RILUZOLE_DUR), data = aset)
+
+  n= 275, number of events= 162 
+
+                       coef  exp(coef)   se(coef)      z Pr(>|z|)    
+AGE_AT_DX_DATE1   0.0298477  1.0302976  0.0074988  3.980 6.88e-05 ***
+RILUZOLE_IND      0.8327705  2.2996813  0.1825401  4.562 5.06e-06 ***
+RILUZOLE_DUR      0.0023863  1.0023891  0.0007581  3.148 0.001646 ** 
+tt(RILUZOLE_DUR) -0.2025423  0.8166520  0.0597970 -3.387 0.000706 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+                 exp(coef) exp(-coef) lower .95 upper .95
+AGE_AT_DX_DATE1     1.0303     0.9706    1.0153    1.0456
+RILUZOLE_IND        2.2997     0.4348    1.6080    3.2889
+RILUZOLE_DUR        1.0024     0.9976    1.0009    1.0039
+tt(RILUZOLE_DUR)    0.8167     1.2245    0.7263    0.9182
+
+Concordance= 0.677  (se = 0.022 )
+Likelihood ratio test= 56.74  on 4 df,   p=1e-11
+Wald test            = 46.26  on 4 df,   p=2e-09
+Score (logrank) test = 36.72  on 4 df,   p=2e-07
+
+> aft_fit1<-survreg(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR, 
++   data = aset,
++   dist = "exp"
++ )
+> summary(aft_fit1)
+
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "exp")
+                    Value Std. Error     z       p
+(Intercept)      9.837431   0.507975 19.37 < 2e-16
+AGE_AT_DX_DATE1 -0.034194   0.007746 -4.41 1.0e-05
+RILUZOLE_IND    -0.864956   0.167623 -5.16 2.5e-07
+RILUZOLE_DUR     0.000491   0.000270  1.82   0.069
+
+Scale fixed at 1 
+
+Exponential distribution
+Loglik(model)= -1334.4   Loglik(intercept only)= -1360.9
+	Chisq= 53 on 3 degrees of freedom, p= 1.8e-11 
+Number of Newton-Raphson Iterations: 5 
+n= 275 
+
+> aft_fit2<-survreg(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR,
++   data = aset,
++   dist = "weib"
++ )
+> summary(aft_fit2)
+
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "weib")
+                    Value Std. Error     z       p
+(Intercept)      9.975469   0.572357 17.43 < 2e-16
+AGE_AT_DX_DATE1 -0.036315   0.008719 -4.16 3.1e-05
+RILUZOLE_IND    -0.872478   0.191163 -4.56 5.0e-06
+RILUZOLE_DUR     0.000537   0.000313  1.72   0.086
+Log(scale)       0.129176   0.058424  2.21   0.027
+
+Scale= 1.14 
+
+Weibull distribution
+Loglik(model)= -1331.8   Loglik(intercept only)= -1352.6
+	Chisq= 41.63 on 3 degrees of freedom, p= 4.8e-09 
+Number of Newton-Raphson Iterations: 5 
+n= 275 
+
+> aft_fit3<-survreg(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR, 
++   data = aset,
++   dist = "logl"
++ )
+> summary(aft_fit3)
+
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "logl")
+                    Value Std. Error     z       p
+(Intercept)      9.102525   0.510345 17.84 < 2e-16
+AGE_AT_DX_DATE1 -0.032969   0.007803 -4.23 2.4e-05
+RILUZOLE_IND    -0.834852   0.186653 -4.47 7.7e-06
+RILUZOLE_DUR     0.000942   0.000293  3.22  0.0013
+Log(scale)      -0.285633   0.065298 -4.37 1.2e-05
+
+Scale= 0.752 
+
+Log logistic distribution
+Loglik(model)= -1316.9   Loglik(intercept only)= -1338.5
+	Chisq= 43.27 on 3 degrees of freedom, p= 2.2e-09 
+Number of Newton-Raphson Iterations: 4 
+n= 275 
+
+> aft_fit4<-survreg(
++   Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + RILUZOLE_DUR, 
++   data = aset,
++   dist = "logn"
++ )
+> summary(aft_fit4)
+
+Call:
+survreg(formula = Surv(time, status) ~ AGE_AT_DX_DATE1 + RILUZOLE_IND + 
+    RILUZOLE_DUR, data = aset, dist = "logn")
+                    Value Std. Error     z       p
+(Intercept)      9.231324   0.547462 16.86 < 2e-16
+AGE_AT_DX_DATE1 -0.035615   0.008361 -4.26 2.0e-05
+RILUZOLE_IND    -0.685608   0.197172 -3.48 0.00051
+RILUZOLE_DUR     0.000931   0.000333  2.79 0.00519
+Log(scale)       0.315457   0.056957  5.54 3.1e-08
+
+Scale= 1.37 
+
+Log Normal distribution
+Loglik(model)= -1320.7   Loglik(intercept only)= -1338.5
+	Chisq= 35.48 on 3 degrees of freedom, p= 9.7e-08 
+Number of Newton-Raphson Iterations: 4 
+n= 275 
+
+> AIC(aft_fit1,
++     aft_fit2,
++     aft_fit3,
++     aft_fit4,
++     cox_fit2)
+> 
