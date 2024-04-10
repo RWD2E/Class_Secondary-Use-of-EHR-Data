@@ -8,41 +8,35 @@ output: html_document
 Let's do some preparation for the class by running the following chunk of codes
 
 ```{r setup}
-#set up rmd 
-knitr::opts_chunk$set(message=F,
-                      warning=F,
-                      echo=F,
-                      fig.width=6,
-                      fig.height=4)
-
 #load packages
-pacman::p_load(tidyverse,
-               survival,
-               survminer,
-               tableone,
-               MatchIt,
-               WeightIt,
-               cobalt
-               )
+pacman::p_load(
+    tidyverse,
+    survival,
+    survminer,
+    tableone,
+    MatchIt,
+    WeightIt,
+    cobalt
+  )
 ```
 
 Load the analytic dataset used previously for the ALS cohort:  
 
 ```{r}
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/classHMI7001/data/final_set.rda") %>%
-  mutate(SEX_F = case_when(SEX=='F' ~ 1,
-                           TRUE ~ 0)) %>%
-  mutate(status=MORT_IND,
-         time=coalesce(DAYS_ALS1DX_TO_DEATH,DAYS_ALS1DX_TO_CENSOR))
+aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
+  mutate(MORT_1YR = case_when(OUTCOME_STATUS==1&DAYS_ALS1DX_TO_OUTCOME<=365~1,TRUE~0)) %>%
+  mutate(status=OUTCOME_STATUS,
+         time=DAYS_ALS1DX_TO_OUTCOME) %>%
+  filter(time > 0)
 ```
 
 
 Recall from the survival analysis session that we observed that riluzole-user group has higher hazard (or lower survival), which is counter-intuitive: 
 
-```{r}
+```{r,fig.height=5}
 ggsurvplot(
-    fit = survfit(Surv(time,status) ~ RILUZ_IND, data = aset),
+    fit = survfit(Surv(time,status) ~ RILUZOLE_IND, data = aset),
     pval = TRUE, conf.int = TRUE,risk.table = TRUE,
     surv.median.line = "hv",linetype = "strata", 
     xlab = "Days", break.x.by = 365,
@@ -52,31 +46,26 @@ ggsurvplot(
 
 # Cohort characterization
 
-Use functions from "tableone" package to generate overall summaries of the study cohort, which requires the creation of "TableOne" object first. To create the "TableOne" object, you will need to specify all variables of interests and separate between numerical variables and categorical variables. 
-
 ```{r}
 # create vector of all variable names
-allvar<-c("AGE_AT_ALS1DX", "RILUZ_DUR", "DAYS_ALS1DX_TO_DEATH", "DAYS_ALS1DX_TO_CENSOR", "time",
-          "SEX_F", "RACE", "RILUZ_IND","MORT_1YR","status")
+allvar<-c("AGE_AT_DX_DATE1", "RILUZOLE_DUR","SEX", "RACE", "RILUZOLE_IND","BMI","MORT_1YR", "time")
 
 # create vector of categorical variable names
-catvar<-c("SEX_F", "RACE", "RILUZ_IND","MORT_1YR","status")
+catvar<-c("SEX", "RACE", "RILUZOLE_IND","MORT_1YR")
 
 # create a TableOne object
 tab<-CreateTableOne(vars=allvar,data=aset,factorVars = catvar)
 tab
 ```
 
-By specifying the "strata" argument,"TableOne" object can also be used to generate cohort characterization summaries for comparison sub-population stratified by exposure/treatment variable. In other words, "tableone" package provides an efficient way for performing filter-based feature selection. 
-
 ```{r}
-allvar_excld_strata<-allvar[!allvar %in% c("RILUZ_IND","RILUZ_DUR")]
-catvar_excld_strata<-catvar[!catvar %in% c("RILUZ_IND","RILUZ_DUR")]
-tab2<-CreateTableOne(vars=allvar_excld_strata,data=aset,factorVars = catvar_excld_strata,strata="RILUZ_IND")
+allvar_excld_strata<-allvar[!allvar %in% c("RILUZOLE_IND","RILUZOLE_DUR")]
+catvar_excld_strata<-catvar[!catvar %in% c("RILUZOLE_IND","RILUZOLE_DUR")]
+tab2<-CreateTableOne(vars=allvar_excld_strata,data=aset,factorVars = catvar_excld_strata,strata="RILUZOLE_IND")
 tab2
 ```
 
-However, with only the demographic information, there doesn't seem to be any difference between the riluzole user group (`RILUZ_IND = 1`) and non-riluzole user group (`RILUZ_IND = 0`). We need to take a look at more baseline clinical and biological characteristics of these two comparison cohort to detect potential confounders. I have created a new dataset called "ALS_DX_BL" which contains all baseline comorbidities grouped as  clinical classification software (CCS) derived from patients' diagnosis history (all observations from CDM Diagnosis table). 
+However, with only the demographic information, there doesn't seem to be any difference between the riluzole user group (`RILUZOLE_IND = 1`) and non-riluzole user group (`RILUZOLE_IND = 0`). We need to take a look at more baseline clinical and biological characteristics of these two comparison cohort to detect potential confounders. I have created a new dataset called "ALS_DX_BL" which contains all baseline comorbidities grouped as  clinical classification software (CCS) derived from patients' diagnosis history (all observations from CDM Diagnosis table). 
 
 ```{r}
 # need to load some additional data
@@ -113,7 +102,7 @@ ccs_col<-colnames(aset2)[grepl("^CCS_",colnames(aset2))]
 allvar_excld_strata<-c(allvar_excld_strata,ccs_col)
 catvar_excld_strata<-c(catvar_excld_strata,ccs_col)
 
-tab3<-CreateTableOne(vars=allvar_excld_strata,data=aset2,factorVars = catvar_excld_strata,strata="RILUZ_IND")
+tab3<-CreateTableOne(vars=allvar_excld_strata,data=aset2,factorVars = catvar_excld_strata,strata="RILUZOLE_IND")
 tab3
 ```
 
@@ -129,7 +118,7 @@ Using a threshold at p = 0.1, we observed that the following CCS codes (disease 
 # Covariate Adjustment
 
 ```{r}
-fit_cox<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX + CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95,
+fit_cox<-coxph(Surv(time,status) ~ RILUZOLE_IND + AGE_AT_DX_DATE1 + CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95,
                data=aset2)
 summary(fit_cox)
 ```
@@ -139,7 +128,7 @@ summary(fit_cox)
 The "MatchIt" package provides convenient functions to perform propensity-score-based matching:   
 
 ```{r}
-mod_match<-matchit(RILUZ_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2,
+mod_match<-matchit(RILUZOLE_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2,
                    method = "nearest", distance = "glm")
 love.plot(mod_match, thresholds = c(m = .1), var.order = "unadjusted")
 ```
@@ -148,7 +137,7 @@ Build coxph survival model based on the matched sample:
 
 ```{r,fig.width=8}
 aset2_match <- match.data(mod_match)
-fit_cox2<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX,
+fit_cox2<-coxph(Surv(time,status) ~ RILUZOLE_IND + AGE_AT_DX_DATE1,
                 data=aset2_match)
 summary(fit_cox2)
 ```
@@ -158,9 +147,9 @@ summary(fit_cox2)
 The "WeightIt" package provides convenient function to calcualte propensity-score-based weights, which can be directly used as "weights" argument in widely used regression modeling packages, such as "glm", "coxph"
 
 ```{r}
-mod_weight<-weightit(RILUZ_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2)
+mod_weight<-weightit(RILUZOLE_IND ~ CCS_101 + CCS_163 + CCS_211 + CCS_252 + CCS_53 + CCS_95, data = aset2)
 
-fit_cox3<-coxph(Surv(time,status) ~ RILUZ_IND + AGE_AT_ALS1DX,
+fit_cox3<-coxph(Surv(time,status) ~ RILUZOLE_IND + AGE_AT_DX_DATE1,
                 data=aset2,weights = mod_weight$weights)
 summary(fit_cox3)
 ```
