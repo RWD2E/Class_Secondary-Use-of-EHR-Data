@@ -14,6 +14,7 @@ pacman::p_load(
     survival,
     survminer,
     tableone,
+    optmatch,
     MatchIt,
     WeightIt,
     cobalt
@@ -83,15 +84,17 @@ add_fs<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_BL_FS")) %>% collect %>%
     RGS_WEAK = case_when(!RGS %in% c('Fair','Strong') ~ 1, TRUE ~ 0),
     SPEECH_ABN = case_when(!SPEECH %in% c('Normal') ~ 1, TRUE ~ 0),
   )
+add_sos<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_BL_SOS")) %>% collect
 
 aset2<-aset %>%
   inner_join(add_cci,by="PATID") %>%
-  inner_join(add_fs,by="PATID")
+  inner_join(add_fs,by="PATID") %>%
+  inner_join(add_sos,by="PATID")
 ```
 
 
 ```{r}
-new_var<-c(colnames(add_cci),colnames(add_fs))
+new_var<-c(colnames(add_cci),colnames(add_fs),colnames(add_sos))
 new_var<-new_var[!new_var %in% c("PATID")]
 new_catvar<-new_var[!new_var %in% c("CCI_TOT")]
 
@@ -116,7 +119,7 @@ tab2
 
 ```{r}
 fit_cox<-coxph(
-  Surv(time,status) ~ RILUZOLE_IND + SEX + AGE_AT_DX_DATE1 + BMI + CCI_TOT + RGS_WEAK  + SPEECH_ABN ,
+  Surv(time,status) ~ RILUZOLE_IND + AGE_AT_DX_DATE1 + BMI + CCI_TOT + RGS_WEAK  + SPEECH_ABN + NUTR_SUPP,
   data=aset2
 )
 summary(fit_cox)
@@ -125,13 +128,13 @@ summary(fit_cox)
 
 # Propensity Score Matching
 
-The "MatchIt" package provides convenient functions to perform propensity-score-based matching:   
+The "MatchIt" package provides convenient functions to perform propensity-score-based matching. Reference of different matching method can be found: https://cran.r-project.org/web/packages/MatchIt/vignettes/matching-methods.html    
 
 ```{r}
 mod_match<-matchit(
-  RILUZOLE_IND ~ SEX + CCI_TOT + RGS_WEAK  + SPEECH_ABN, 
+  RILUZOLE_IND ~ SEX + CCI_TOT + RGS_WEAK  + SPEECH_ABN + NUTR_SUPP, 
   data = aset2,
-  method = "nearest", 
+  method = "full", 
   distance = "glm"
 )
 love.plot(
@@ -165,7 +168,7 @@ The "WeightIt" package provides convenient function to calcualte propensity-scor
 
 ```{r}
 mod_weight<-weightit(
-  RILUZOLE_IND ~ SEX + CCI_TOT + RGS_WEAK  + SPEECH_ABN, 
+  RILUZOLE_IND ~ SEX + CCI_TOT + RGS_WEAK  + SPEECH_ABN + NUTR_SUPP, 
   data = aset2
 )
 fit_cox3<-coxph(
