@@ -16,6 +16,10 @@ create a patient table with following informations in separate columns:
 - DX_DATE1: first date of ALS diagnosis
 */
 
+select * from deidentified_pcornet_cdm.cdm_c015r031.deid_obs_clin
+where lower(raw_obsclin_name) like '%glasgow%'
+;
+
 -- collect all diagnoses about ALS
 create or replace table all_als_dx as 
 select * 
@@ -27,8 +31,7 @@ where dx in ('335.20','G12.21')
 select * from all_als_dx limit 5;
 
 -- gather some summary statistics needed for following steps
-create or replace table als_incld as 
-select patid, 
+create or replace table als_incld as SHARED_DB.DEPRESSION.ANTIDEPRESSANT_RXNORMSHARED_DB.DEPRESSION.ANTIDEPRESSANT_RXNORM
        count(distinct dx_date) as dx_cnt, 
        min(dx_date) as dx_date1
 from all_als_dx
@@ -178,3 +181,181 @@ on demo.patid = o.patid
 select count(*), count(distinct patid) from als_riluzole_death_final;
 
 select * from als_riluzole_death_final limit 5;
+
+/*add baseline BMI*/
+create or replace table als_elig_bmi as 
+with ht as (
+    select a.patid, median(v.ht) as ht, 
+    from als_incld_demo a 
+    join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+    on a.patid = v.patid
+    group by a.patid
+),  wt as (
+    select patid, wt
+    from (
+        select a.patid, v.wt, 
+               row_number() over (partition by a.patid order by abs(datediff(day,a.dx_date1::date,v.measure_date::date))) as rn 
+        from als_incld_demo a 
+        join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+        on a.patid = v.patid 
+        -- where datediff(year,a.dx_date1::date,v.measure_date::date) between 2 and -10
+    )
+    where rn = 1
+), bmi as (
+    select patid, original_bmi as bmi
+    from (
+        select a.patid, v.original_bmi, 
+               row_number() over (partition by a.patid order by abs(datediff(day,a.dx_date1::date,v.measure_date::date))) as rn 
+        from als_incld_demo a 
+        join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+        on a.patid = v.patid 
+        -- where datediff(year,a.dx_date1::date,v.measure_date::date) between 2 and -10
+    )
+    where rn = 1
+)
+select a.patid, 
+       ht.ht,
+       wt.wt,
+       coalesce(bmi.bmi,wt.wt/(ht.ht*ht.ht)*703) as bmi
+from als_incld_demo a 
+left join ht on a.patid = ht.patid
+left join wt on a.patid = wt.patid
+left join bmi on a.patid = bmi.patid
+;
+
+select * from als_elig_bmi;
+
+select distinct code_grp from shared_db.depression.cci_ref;
+
+/*add CCI*/
+create or replace table als_bl_cci as 
+with dx_all as (
+    select a.patid, 
+           c.code_grp,
+           c.score,
+           row_number() over (partition by a.patid,c.code_grp order by datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1)) as rn
+    from als_incld_demo a
+    join deidentified_pcornet_cdm.cdm_c015r031.deid_diagnosis b
+    on a.patid = b.patid and coalesce(b.dx_date,b.admit_date)<= a.dx_date1
+    join shared_db.depression.cci_ref c 
+    on b.dx = c.code and b.dx_type = c.code_type
+), dx_cci_tot as (
+    select patid, sum(score) as cci_tot
+    from dx_all 
+    where rn = 1
+    group by patid
+), cci_unpvt as (
+    select * 
+    from (
+        select patid, code_grp, 1 as ind 
+        from dx_all where rn = 1
+    ) 
+    pivot (max(ind) for code_grp in (
+        'mi','chf','pvd','dementia','cpd','rheumd','pud','mld','diab','diabwc','hp','rend','canc','msld','metacanc','cevd','aids'))
+        as p(patid,mi,chf,pvd,dementia,cpd,rheumd,pud,mld,diab,diabwc,hp,rend,canc,msld,metacanc,cevd,aids)
+)
+select a.patid, 
+       coalesce(tot.cci_tot,0) as cci_tot,
+       coalesce(cci.mi,0) as cci_mi,
+       coalesce(cci.chf,0) as cci_chf,
+       coalesce(cci.pvd,0) as cci_pvd,
+       coalesce(cci.dementia,0) as cci_dementia,
+       coalesce(cci.cpd,0) as cci_cpd,
+       coalesce(cci.rheumd,0) as cci_rheum,
+       coalesce(cci.pud,0) as cci_pud,
+       coalesce(cci.mld,0) as cci_mld,
+       coalesce(cci.diab,0) as cci_diab,
+       coalesce(cci.diabwc,0) as cci_diabwc,
+       coalesce(cci.hp,0) as cci_hp,
+       coalesce(cci.rend,0) as cci_rend,
+       coalesce(cci.canc,0) as cci_canc,
+       coalesce(cci.msld,0) as cci_msld,
+       coalesce(cci.metacanc,0) as cci_metacanc,
+       coalesce(cci.cevd,0) as cci_cevd,
+       coalesce(cci.aids,0) as cci_aids
+from als_incld_demo a 
+left join dx_cci_tot tot on a.patid = tot.patid
+left join cci_unpvt cci on a.patid =  cci.patid
+;
+
+select * from als_bl_cci;
+
+/*add baseline function*/
+create or replace table als_bl_fs as 
+with fs_stk as (
+    select a.patid,
+           b.obsclin_result_text,
+           b.obsclin_result_num,
+           b.obsclin_date,
+           b.obsclin_code,
+           b.raw_obsclin_name,
+           row_number() over (partition by a.patid order by datediff(day,b.obsclin_date,a.dx_date1)) as rn
+    from als_incld_demo a 
+    join deidentified_pcornet_cdm.cdm_c015r031.deid_obs_clin b 
+    on a.patid = b.patid
+    where b.raw_obsclin_name in (
+        'LUE Grip Strength',
+        'RUE Grip Strength',
+        'Characteristics of Speech'
+    ) and 
+    datediff(day,b.obsclin_date,a.dx_date1) <= 60
+), fs_unpvt as (
+    select *
+    from (select patid,raw_obsclin_name,obsclin_result_text from fs_stk where rn = 1)
+        pivot(max(obsclin_result_text) for raw_obsclin_name in ('LUE Grip Strength','RUE Grip Strength','Characteristics of Speech'))
+        as p(patid,lgs,rgs,speech)
+    order by patid
+)
+select a.patid,
+       coalesce(replace(trim(b.lgs,' '),'###',''),'Fair') as lgs,
+       coalesce(replace(trim(b.rgs,' '),'###',''),'Fair') as rgs,
+       coalesce(replace(trim(b.speech,' '),'###',''),'Normal') as speech
+from als_incld_demo a
+left join fs_unpvt b 
+on a.patid = b.patid
+;
+
+select * from als_bl_fs;
+
+
+/*add baseline symptoms*/
+create or replace table als_bl_sos as 
+with sos_dx as (
+    select a.patid, 
+           c.endpt_grp,
+           c.endpt,
+           row_number() over (partition by a.patid,c.endpt order by datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1)) as rn
+    from als_incld_demo a
+    join deidentified_pcornet_cdm.cdm_c015r031.deid_diagnosis b
+    on a.patid = b.patid and datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1) <= 60
+    join shared_db.als.als_stage_ref c 
+    on b.dx = c.cd and b.dx_type = c.cd_type
+),  sos_px as (
+    select a.patid, 
+           c.endpt_grp,
+           c.endpt,
+           row_number() over (partition by a.patid,c.endpt order by datediff(day,coalesce(b.px_date,b.admit_date),a.dx_date1)) as rn
+    from als_incld_demo a
+    join deidentified_pcornet_cdm.cdm_c015r031.deid_procedures b
+    on a.patid = b.patid and datediff(day,coalesce(b.px_date,b.admit_date),a.dx_date1) <= 60
+    join shared_db.als.als_stage_ref c 
+    on b.px = c.cd and b.px_type = c.cd_type
+),  sos_unpvt as (
+    select * 
+    from (
+        select patid, endpt, rn from sos_dx where rn = 1
+        union 
+        select patid, endpt, rn from sos_px where rn = 1
+    ) 
+    pivot (max(rn) for endpt in ('nutrition-support','respiratory-support'))
+    as p(patid, nutr_supp, resp_supp)
+)
+select a.patid, 
+      coalesce(b.nutr_supp,0) as nutr_supp,
+      coalesce(b.resp_supp,0) as resp_supp
+from als_incld_demo a 
+left join sos_unpvt b 
+on a.patid = b.patid
+;
+
+select * from als_bl_sos;
