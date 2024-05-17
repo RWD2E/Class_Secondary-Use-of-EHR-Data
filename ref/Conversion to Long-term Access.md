@@ -7,7 +7,7 @@ Your access to our NextGen data lake will **expire at the end of the semester**.
 - Go to: https://ecompliance.missouri.edu/
 - Navigate to the "Non" form as shown in the figure below
 ![navigate-to-nhs](./img/end-of-class-conversion-navigate-to-nhs.png)
-- Complete the form and save the approval letter/email for use later. A sample letter can be found here: [sample NHS Determination Application](./sample-NHS-Determination-form.pdf). You may re-use some of the language regarding de-identified data source and de-identification process where you see fit. 
+- Complete the form and save the approval letter/email for use later. A sample letter can be found here: [sample NHS Determination Application](./supp/sample-NHS-Determination-form.pdf). You may re-use some of the language regarding de-identified data source and de-identification process where you see fit. 
 
 ### Step 2. NextGen BMI Intake Process
 
