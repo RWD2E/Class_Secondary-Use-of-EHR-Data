@@ -10,3 +10,9 @@ This course is tailored towards Master of Health Informatics but could be of int
 4. Design an observational study or cohort for a prospective trial, create an analytic dataset, and complete preliminary analysis.
 5. Be able to select appropriate statistical or machine learning technics on RWHD to address healthcare problems in one of the three settings (case-control, cohort study, cross-sectional study).
 6. Understand the concepts and importance of model overfitting, model bias and interpretability and common methods to address relevant issues.
+
+
+***************************
+
+#### Website Bookmarks: 
+1. [PCORnet CDM Data Dictionary and Valuesets](https://pcornet.org/data/common-data-model/)
