@@ -16,3 +16,6 @@ This course is tailored towards Master of Health Informatics but could be of int
 
 #### Website Bookmarks: 
 1. [PCORnet CDM Data Dictionary and Valuesets](https://pcornet.org/data/common-data-model/)
+2. [Snowflake Database Login Webpage](https://mf63245.us-east-2.aws.snowflakecomputing.com/)
+3. [i2b2 Query Tool Login Webpage](https://i2b2.nextgenbmi.umsystem.edu/webclient/)
+4. [AWS Service Workbench Login Webpage](https://aws.nextgenbmi.umsystem.edu/)
