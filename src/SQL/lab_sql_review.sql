@@ -9,7 +9,7 @@
 use role CLASS_MEMBER_XSM7F;
 use warehouse NEXTGENBMI_WH;
 use database CLASS_MEMBER_STUDENT_DB;
--- use schema BBME_8550_SONG_XING;
+-- use schema FIRSTNAME_LASTNAME;
 
 
 /* 
