@@ -196,7 +196,7 @@ where b.result_num > 4;
 
 -- Ex: Identify patients with uncontrolled blood pressure
 --       a. SBP>=160mmhg at an office visit
-create or replace pt_sbp_ge160 as
+create or replace table pt_sbp_ge160 as
 select distinct a.patid
 from office_vis a
 join sbp_ge140 b
@@ -204,7 +204,7 @@ on a.patid = b.patid and a.encounterid = b.encounterid
 where b.systolic >= 160;
 
 --       b. SBP>=140mmhg at an office visit with a history of hypertensive disease
-create or replace pt_sbp_ge140_htn as
+create or replace table pt_sbp_ge140_htn as
 select distinct a.patid
 from office_vis a
 join sbp_ge140 b
@@ -213,7 +213,7 @@ join htn_history htn
 on a.patid = htn.pati;
 
 --       c. SBP>=140mmhg at two different office visits
-create or replace pt_sbp_2ge140 as
+create or replace table pt_sbp_2ge140 as
 select patid, count(distinct encounterid) as vis_cnt
 from sbp_ge140
 group by patid
