@@ -222,11 +222,11 @@ having count(distinct encounterid) > 1;
 --       d. How many distinct patients with uncontrolled blood pressure
 select count(distinct patid) as pat_cnt
 from (
-   select * from pt_sbp_ge160
+   select patid from pt_sbp_ge160
    union 
-   select * from pt_sbp_ge140_htn
+   select patid from pt_sbp_ge140_htn
    union 
-   select * from pt_sbp_2ge140
+   select patid from pt_sbp_2ge140
 );
 
 
@@ -249,24 +249,27 @@ select patid, original_bmi,
        round(wt/(ht*ht)*703) as calculated_bmi,
        NVL(original_bmi, round(wt/(ht*ht)*703)) as combined_bmi 
 from DEIDENTIFIED_PCORNET_CDM.CDM_C016R033.DEID_VITAL
-where original_bmi is not null or
-      (wt is not null and ht is not null)
+where (
+       original_bmi is not null or
+       (wt is not null and ht is not null)
+      ) and 
+      ht > 0
 ;
 
 create or replace table bmi_classified as 
-select patid, height, weight, original_bmi, 
+select patid, original_bmi, calculated_bmi,
        case when combined_bmi < 18.5 then 'underweight'
             when combined_bmi >= 18.5 and combined_bmi < 25 then 'normal'
             when combined_bmi >= 25 and combined_bmi < 30 then 'overweight'
             else 'obese'
             end as bmi_category 
 from bmi_calculated
+;
 
 select bmi_category, count(distinct patid) as pat_cnt
 from bmi_classified
 group by bmi_category
 ;
-
 
 
 
