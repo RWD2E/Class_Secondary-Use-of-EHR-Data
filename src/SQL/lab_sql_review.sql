@@ -210,7 +210,7 @@ from office_vis a
 join sbp_ge140 b
 on a.patid = b.patid and a.encounterid = b.encounterid
 join htn_history htn
-on a.patid = htn.pati;
+on a.patid = htn.patid;
 
 --       c. SBP>=140mmhg at two different office visits
 create or replace table pt_sbp_2ge140 as
