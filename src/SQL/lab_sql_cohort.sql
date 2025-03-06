@@ -351,7 +351,7 @@ with sos_dx as (
     from als_incld_demo a
     join deidentified_pcornet_cdm.CDM_C016R033.deid_diagnosis b
     on a.patid = b.patid and datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1) <= 60
-    join shared_db.als.als_stage_ref c 
+    join class_member_bbme8550_db.public.als_stage_ref c 
     on b.dx = c.cd and b.dx_type = c.cd_type
 ),  sos_px as (
     select a.patid, 
@@ -361,7 +361,7 @@ with sos_dx as (
     from als_incld_demo a
     join deidentified_pcornet_cdm.CDM_C016R033.deid_procedures b
     on a.patid = b.patid and datediff(day,coalesce(b.px_date,b.admit_date),a.dx_date1) <= 60
-    join shared_db.als.als_stage_ref c 
+    join class_member_bbme8550_db.public.als_stage_ref c 
     on b.px = c.cd and b.px_type = c.cd_type
 ),  sos_unpvt as (
     select * 
