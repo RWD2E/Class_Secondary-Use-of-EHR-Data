@@ -108,7 +108,7 @@ create an outcome table with following information collected in separate columns
 - OUTCOME_DATE: date of the outcome: death date if DEATH_IND = 1; last encounter date if DEATH_IND = 0
 */
 -- collect all death date data
-create or replace table outcome_all as 
+create or replace table outcome_death as 
 select distinct dth.patid, dth.death_date::date as death_date
 from deidentified_pcornet_cdm.CDM_C016R033.deid_death dth 
 join als_incld_demo als 
@@ -116,18 +116,18 @@ on dth.patid = als.patid
 ;
 -- duplicate check
 select count(*), count(distinct patid)
-from outcome_all;
+from outcome_death;
 -- it seems that there could be multiple death records per patient
 
 -- inspect the duplicated cases
 with patid_dup as (
     select patid, count(distinct death_date)
-    from outcome_all
+    from outcome_death
     group by patid
     having count(distinct death_date) > 1
 )
 select a.* 
-from outcome_all a
+from outcome_death a
 join patid_dup b
 on a.patid = b.patid
 order by a.patid, a.death_date
@@ -136,7 +136,7 @@ order by a.patid, a.death_date
 -- create a helper table to identify conflict death dates
 create or replace table outcome_death_dup as 
 select patid, count(distinct death_date) as dup_cnt
-from outcome_all 
+from outcome_death 
 group by patid
 ;
 
@@ -145,7 +145,7 @@ create or replace table outcome_death_dedup as
 select dth.patid, 
        1 as outcome_status,
        dth.death_date as outcome_date
-from outcome_all dth 
+from outcome_death dth 
 where exists (
  select 1 from outcome_death_dup dup where dup.patid = dth.patid and dup.dup_cnt = 1
 )
@@ -156,11 +156,13 @@ from outcome_death_dedup;
 
 -- create a censor table for patients who are still alive
 create or replace table outcome_censor as 
-select patid, 
-       max(admit_date) as censor_date
-from deidentified_pcornet_cdm.CDM_C016R033.deid_encounter
-where admit_date::date <= '2024-01-31'
-group by patid
+select a.patid, 
+       max(b.admit_date) as censor_date
+from als_incld_demo a 
+join deidentified_pcornet_cdm.CDM_C016R033.deid_encounter b
+on a.patid = b.patid
+where b.admit_date::date <= '2024-12-31'
+group by a.patid
 ;
 
 -- putting the death table and censor table together
@@ -175,6 +177,9 @@ left join outcome_censor cs
 on demo.patid = cs.patid
 ;
 -- think about why I have to do "left join"
+
+--inspect the table
+select * from outcome_final;
 
 /*
 now, putting everything together and create final analytic dataset
@@ -196,6 +201,9 @@ on demo.patid = o.patid
 select count(*), count(distinct patid) from als_riluzole_death_final;
 
 select * from als_riluzole_death_final limit 5;
+
+-------------------------------------------------------------------------------
+-------------------------------------------------------------------------------
 
 /*add baseline BMI*/
 create or replace table als_elig_bmi as 
@@ -240,7 +248,7 @@ left join bmi on a.patid = bmi.patid
 
 select * from als_elig_bmi;
 
-select distinct code_grp from shared_db.depression.cci_ref;
+select distinct code_grp from class_member_bbme8550_db.public.cci_ref;
 
 /*add CCI*/
 create or replace table als_bl_cci as 
@@ -252,7 +260,7 @@ with dx_all as (
     from als_incld_demo a
     join deidentified_pcornet_cdm.CDM_C016R033.deid_diagnosis b
     on a.patid = b.patid and coalesce(b.dx_date,b.admit_date)<= a.dx_date1
-    join shared_db.depression.cci_ref c 
+    join class_member_bbme8550_db.public.cci_ref c 
     on b.dx = c.code and b.dx_type = c.code_type
 ), dx_cci_tot as (
     select patid, sum(score) as cci_tot
