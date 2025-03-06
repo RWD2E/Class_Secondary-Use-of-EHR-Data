@@ -119,6 +119,20 @@ select count(*), count(distinct patid)
 from outcome_all;
 -- it seems that there could be multiple death records per patient
 
+-- inspect the duplicated cases
+with patid_dup as (
+    select patid, count(distinct death_date)
+    from outcome_all
+    group by patid
+    having count(distinct death_date) > 1
+)
+select a.* 
+from outcome_all a
+join patid_dup b
+on a.patid = b.patid
+order by a.patid, a.death_date
+;
+
 -- create a helper table to identify conflict death dates
 create or replace table outcome_death_dup as 
 select patid, count(distinct death_date) as dup_cnt
