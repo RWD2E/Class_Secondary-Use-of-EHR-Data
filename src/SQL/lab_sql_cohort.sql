@@ -31,7 +31,8 @@ where dx in ('335.20','G12.21')
 select * from all_als_dx limit 5;
 
 -- gather some summary statistics needed for following steps
-create or replace table als_incld as SHARED_DB.DEPRESSION.ANTIDEPRESSANT_RXNORMSHARED_DB.DEPRESSION.ANTIDEPRESSANT_RXNORM
+create or replace table als_incld as 
+select patid,
        count(distinct dx_date) as dx_cnt, 
        min(dx_date) as dx_date1
 from all_als_dx
