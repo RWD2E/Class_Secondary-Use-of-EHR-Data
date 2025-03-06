@@ -16,14 +16,14 @@ create a patient table with following informations in separate columns:
 - DX_DATE1: first date of ALS diagnosis
 */
 
-select * from deidentified_pcornet_cdm.cdm_c015r031.deid_obs_clin
+select * from deidentified_pcornet_cdm.CDM_C016R033.deid_obs_clin
 where lower(raw_obsclin_name) like '%glasgow%'
 ;
 
 -- collect all diagnoses about ALS
 create or replace table all_als_dx as 
 select * 
-from deidentified_pcornet_cdm.cdm_c015r031.deid_diagnosis
+from deidentified_pcornet_cdm.CDM_C016R033.deid_diagnosis
 where dx in ('335.20','G12.21')
 -- where (dx_type = '09' and dx = '335.20') or (dx_type = '10' and dx='G12.21')
 ;
@@ -55,7 +55,7 @@ select als_incld.*,
        demo.hispanic as ethnicity,
        datediff(year,demo.birth_date,als_incld.dx_date1) as age_at_dx_date1
 from als_incld
-join deidentified_pcornet_cdm.cdm_c015r031.deid_demographic demo
+join deidentified_pcornet_cdm.CDM_C016R033.deid_demographic demo
 on als_incld.patid = demo.patid
 where als_incld.dx_cnt >= 2
 ;
@@ -79,7 +79,7 @@ where lower(str) like '%riluzol%' and sab = 'RXNORM'
 -- collect all prescriptions of riluzole
 create or replace table all_riluzole_als as
 select pr.*
-from deidentified_pcornet_cdm.cdm_c015r031.deid_prescribing pr
+from deidentified_pcornet_cdm.CDM_C016R033.deid_prescribing pr
 join als_incld_demo als 
 on pr.patid = als.patid
 join riluz_rxnorm rxn 
@@ -109,7 +109,7 @@ create an outcome table with following information collected in separate columns
 -- collect all death date data
 create or replace table outcome_all as 
 select distinct dth.patid, dth.death_date::date as death_date
-from deidentified_pcornet_cdm.cdm_c015r031.deid_death dth 
+from deidentified_pcornet_cdm.CDM_C016R033.deid_death dth 
 join als_incld_demo als 
 on dth.patid = als.patid 
 ;
@@ -143,7 +143,7 @@ from outcome_death_dedup;
 create or replace table outcome_censor as 
 select patid, 
        max(admit_date) as censor_date
-from deidentified_pcornet_cdm.cdm_c015r031.deid_encounter
+from deidentified_pcornet_cdm.CDM_C016R033.deid_encounter
 where admit_date::date <= '2024-01-31'
 group by patid
 ;
@@ -187,7 +187,7 @@ create or replace table als_elig_bmi as
 with ht as (
     select a.patid, median(v.ht) as ht, 
     from als_incld_demo a 
-    join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+    join deidentified_pcornet_cdm.CDM_C016R033.deid_vital v 
     on a.patid = v.patid
     group by a.patid
 ),  wt as (
@@ -196,7 +196,7 @@ with ht as (
         select a.patid, v.wt, 
                row_number() over (partition by a.patid order by abs(datediff(day,a.dx_date1::date,v.measure_date::date))) as rn 
         from als_incld_demo a 
-        join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+        join deidentified_pcornet_cdm.CDM_C016R033.deid_vital v 
         on a.patid = v.patid 
         -- where datediff(year,a.dx_date1::date,v.measure_date::date) between 2 and -10
     )
@@ -207,7 +207,7 @@ with ht as (
         select a.patid, v.original_bmi, 
                row_number() over (partition by a.patid order by abs(datediff(day,a.dx_date1::date,v.measure_date::date))) as rn 
         from als_incld_demo a 
-        join deidentified_pcornet_cdm.cdm_c015r031.deid_vital v 
+        join deidentified_pcornet_cdm.CDM_C016R033.deid_vital v 
         on a.patid = v.patid 
         -- where datediff(year,a.dx_date1::date,v.measure_date::date) between 2 and -10
     )
@@ -235,7 +235,7 @@ with dx_all as (
            c.score,
            row_number() over (partition by a.patid,c.code_grp order by datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1)) as rn
     from als_incld_demo a
-    join deidentified_pcornet_cdm.cdm_c015r031.deid_diagnosis b
+    join deidentified_pcornet_cdm.CDM_C016R033.deid_diagnosis b
     on a.patid = b.patid and coalesce(b.dx_date,b.admit_date)<= a.dx_date1
     join shared_db.depression.cci_ref c 
     on b.dx = c.code and b.dx_type = c.code_type
@@ -291,7 +291,7 @@ with fs_stk as (
            b.raw_obsclin_name,
            row_number() over (partition by a.patid order by datediff(day,b.obsclin_date,a.dx_date1)) as rn
     from als_incld_demo a 
-    join deidentified_pcornet_cdm.cdm_c015r031.deid_obs_clin b 
+    join deidentified_pcornet_cdm.CDM_C016R033.deid_obs_clin b 
     on a.patid = b.patid
     where b.raw_obsclin_name in (
         'LUE Grip Strength',
@@ -326,7 +326,7 @@ with sos_dx as (
            c.endpt,
            row_number() over (partition by a.patid,c.endpt order by datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1)) as rn
     from als_incld_demo a
-    join deidentified_pcornet_cdm.cdm_c015r031.deid_diagnosis b
+    join deidentified_pcornet_cdm.CDM_C016R033.deid_diagnosis b
     on a.patid = b.patid and datediff(day,coalesce(b.dx_date,b.admit_date),a.dx_date1) <= 60
     join shared_db.als.als_stage_ref c 
     on b.dx = c.cd and b.dx_type = c.cd_type
@@ -336,7 +336,7 @@ with sos_dx as (
            c.endpt,
            row_number() over (partition by a.patid,c.endpt order by datediff(day,coalesce(b.px_date,b.admit_date),a.dx_date1)) as rn
     from als_incld_demo a
-    join deidentified_pcornet_cdm.cdm_c015r031.deid_procedures b
+    join deidentified_pcornet_cdm.CDM_C016R033.deid_procedures b
     on a.patid = b.patid and datediff(day,coalesce(b.px_date,b.admit_date),a.dx_date1) <= 60
     join shared_db.als.als_stage_ref c 
     on b.px = c.cd and b.px_type = c.cd_type
