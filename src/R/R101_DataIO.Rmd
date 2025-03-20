@@ -41,7 +41,7 @@ The classic method for loading data from SQL database is to directly send SQL qu
 ```{r}
 dat1a<-dbGetQuery(
     myconn,  # connection object
-    "select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL"  # sql codes
+    "select * from ALS_RILUZOLE_DEATH_FINAL"  # sql codes
 )
 ```
 
@@ -49,9 +49,9 @@ dat1a<-dbGetQuery(
 There are existing R packages with wrapper function that can interface with SQL. In other words, instead of writing out the SQL codes, you can just call the R function to perform some simple SQL operations, such as read a single table into R and write a single table over to SQL database. 
 
 ```{r}
-dat1c<-tbl(
+dat1b<-tbl(
     myconn,
-    sql("select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL")
+    sql("select * from PUBLIC.ALS_RILUZOLE_DEATH_FINAL")
 ) %>%
   collect()
 ```
@@ -59,8 +59,8 @@ dat1c<-tbl(
 # Load data in using SQL chunk supported by Rmd
 R markdown further simplified the above codes for embedding SQL queries by including "SQL code chunks". SQL code chunk is implemented with the chunk header of parameters `sql, connection, output.var`. 
 
-```{sql, connection=myconn, output.var="dat1d"}
-select * from SHARED_DB.ALS.ALS_RILUZOLE_DEATH_FINAL
+```{sql, connection=myconn, output.var="dat1c"}
+select * from ALS_RILUZOLE_DEATH_FINAL
 ```
 
 # Save intermediate data
@@ -68,43 +68,33 @@ Please create a sub-folder under the working directory as `./data` and all raw a
 
 ## save dataframe as Rdata file (.rda)
 ```{r}
-saveRDS(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.rda")
+saveRDS(dat1a,file="C:/project/data/als_aset.rda")
 ```
 
 Then, how do we read the .rda file back into R?
 
 ```{r}
-dat1_rds<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
+dat1_rds<-readRDS("C:/project/data/als_aset.rda")
 ```
 
 ## save dataframe as CSV file (.csv)
 ```{r}
-write.csv(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.csv")
+write.csv(dat1a,file="C:/project/data/als_aset.csv")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_csv<-read.csv("C:/Users/Administrator/Documents/proj/data/als_aset.csv")
+dat1_csv<-read.csv("C:/project/data/als_aset.csv")
 ```
 
 ## save dataframe as delimiter separated file (.txt)
 ```{r}
-write.table(dat1a,file="C:/Users/Administrator/Documents/proj/data/als_aset.txt",sep="|")
+write.table(dat1a,file="C:/project/data/als_aset.txt",sep="|")
 ```
 
 Then, how do we read the .csv file back into R?
 
 ```{r}
-dat1_txt<-read.table("C:/Users/Administrator/Documents/proj/data/als_aset.txt",sep="|")
-```
-
-## let's also load the raw Riluzole drug table
-```{r}
-riluz<-tbl(
-    myconn,
-    sql("select * from SHARED_DB.ALS.ALL_RILUZOLE_ALS")
-) %>%
-  collect()
-saveRDS(riluz,file="C:/Users/Administrator/Documents/proj/data/riluz_tbl.rda")
+dat1_txt<-read.table("C:/project/data/als_aset.txt",sep="|")
 ```
