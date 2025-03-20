@@ -21,7 +21,7 @@ pacman::p_load(
 ```
 
 # Make Database connection
-First, let us follow the [Service Workbench User Manual](https://github.com/RWD2E/Class_Secondary-Use-of-EHR-Data/blob/main/ref/AWS%20Service%20Workbench%20User%20Manual.md) to setup ODBC connector object (i.e. Data Source Name, or, DSN). 
+First, let's setup ODBC connector object (i.e. Data Source Name, or, DSN).You can also refer to the AWS Service Workbench User Manual for more details.   
 
 Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make database connection. Due to re-direction to Umsystem log-in page with the Shibboleth method, you may not be able to Knit this report at once. 
 
