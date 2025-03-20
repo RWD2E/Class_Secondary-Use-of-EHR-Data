@@ -145,10 +145,10 @@ To configure the ODBC driver in a Windows environment, follow the next steps des
 2.  User: <your pawprint>@umsystem.edu
 3.  Password: leave it blank, as you will need to specify it later when calling this ODBC connector
 4.  Server:mf63245.us-east-2.aws.snowflakecomputing.com
-5.  Database: [snowflake database you want to connect to] CLASS_MEMBER_<your pawprint>_DB
+5.  Database: [snowflake database you want to connect to] CLASS_MEMBER_BBME8550_STUDENTS_DB
 6.  Schema: [snowflake schema you want to connect to] PUBLIC
 7.  Warehouse: [snowflake warehouse you want to use] NEXTGENBMI_WH
-8.  Role: [snowflake role you are pre-assigned to] CLASS_MEMBER_<your pawprint>
+8.  Role: [snowflake role you are pre-assigned to] BBME_8550_<your name>
 9.  Tracing: 6
 10. Authenticator: externalbrowser
 ```
