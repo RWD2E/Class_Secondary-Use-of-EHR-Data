@@ -1,7 +1,7 @@
 ---
 title: "Data Preparation and Preprocessing"
 author: "Xing Song"
-date: "10/06/2022"
+date: ""
 output: html_document
 ---
 
@@ -158,7 +158,7 @@ df_add_days2outcome %>%
 ```
 
 
-#### Data Cleaning - Missing Data 
+#### Data Cleaning - Outliers and Missing Data 
 
 Current table is a bit too clean. Let's add another variable to make this exercise more practical
 ```{r db_connection}
@@ -175,6 +175,7 @@ bmi<-dbGetQuery(myconn,"select * from PUBLIC.ALS_ELIG_BMI")
 head(bmi)
 ```
 
+
 ```{r}
 ##========================================================
 # the "join", "right_join", and "left_join" function in R
@@ -187,6 +188,19 @@ df_addbmi<-df %>%
   )
 head(df_addbmi)
 ```
+
+
+##### Data Cleaning - Outliers
+
+```{r, warning = F}
+##========================================================
+# Boxplot applied Tukey's method
+##======================================================== 
+ggplot(df_addbmi,aes(y=BMI))+
+  geom_boxplot()
+```
+
+##### Data Cleaning - Missing Data
 
 ```{r}
 ##========================================================
@@ -229,7 +243,7 @@ df_addbmi %>%
 ```
 
 
-```{r}
+```{r, warning=F}
 ##========================================================
 # "mice" package provides functions that help you quickly  
 # take care of the imputing process  
@@ -252,6 +266,7 @@ densityplot(df_addbmi_mice)
 df_addbmi_imputed<-complete(df_addbmi_mice,1)
 head(df_addbmi_imputed)
 ```
+
 
 ### Data Transformation
 #### One-hot encoding 
@@ -308,6 +323,7 @@ df2<-df %>%
 head(df2)
 ```
 
+
 ```{r}
-saveRDS(df2,file="C:/Users/Administrator/Documents/proj/data/final_set2.rda")
+saveRDS(df2,file="C:/project/data/als_aset2.rda")
 ```

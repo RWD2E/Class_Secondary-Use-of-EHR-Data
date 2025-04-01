@@ -14,7 +14,7 @@ pacman::p_load(
     kableExtra,
     tableone
 )
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set.rda")
+aset<-readRDS("C:/project/data/als_aset2.rda")
 ```
 
 #### Univariate EDA
