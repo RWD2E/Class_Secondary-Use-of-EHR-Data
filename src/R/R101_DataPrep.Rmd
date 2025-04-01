@@ -17,7 +17,7 @@ pacman::p_load(
 
 
 ```{r}
-df<-readRDS("C:/Users/Administrator/Documents/proj/data/als_aset.rda")
+df<-readRDS("C:/project/data/als_aset.rda")
 ```
 
 ## Quantitative and Qualitative Data (11.2.3)
@@ -171,7 +171,7 @@ pacman::p_load(DBI, odbc)
     pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
 ) 
  
-bmi<-dbGetQuery(myconn,"select * from SHARED_DB.ALS.ALS_ELIG_BMI")
+bmi<-dbGetQuery(myconn,"select * from PUBLIC.ALS_ELIG_BMI")
 head(bmi)
 ```
 
