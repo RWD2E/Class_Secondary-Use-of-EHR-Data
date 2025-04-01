@@ -1,16 +1,12 @@
 ---
-title: "Data Import and Export"
-author: "Xing Song"
-date: "10/10/2022"
+title: "data In and Out"
 output: html_document
+date: "2025-03-20"
 ---
 
 Let's do some preparation for the class by running the following chunk of codes:
 
 ```{r setup, include=FALSE}
-#install pacman if not
-install.packages("pacman")
-
 #install all the packages for this script
 pacman::p_load(
     DBI, # database connection
@@ -21,18 +17,18 @@ pacman::p_load(
 ```
 
 # Make Database connection
-First, let's setup ODBC connector object (i.e. Data Source Name, or, DSN).You can also refer to the AWS Service Workbench User Manual for more details.   
+First, will need to setup ODBC connector object (i.e. Data Source Name, or, DSN).You can also refer to the AWS Service Workbench User Manual for more details. 
 
 Use `DBI:dbConnect` and `odbc::odbc()` function with stored credentials to make database connection. Due to re-direction to Umsystem log-in page with the Shibboleth method, you may not be able to Knit this report at once. 
 
 ```{r db_connection}
 # you can directly put your credential in the function
-# myconn <- DBI::dbConnect(
-#    drv = odbc::odbc(),
-#    dsn = "XXXX",
-#    uid = "<Shibboleth username>@umsystem.edu", 
-#    pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
-#) 
+myconn <- DBI::dbConnect(
+   drv = odbc::odbc(),
+   dsn = "snowflake_deid",
+   uid = "xsm7f@umsystem.edu",
+   pwd = ""  # leave the password empty if using Shibboleth (as you will be prompted to the university log-in portal)
+)
 ```
 
 # Load data in using R function by embedding SQL codes
@@ -98,3 +94,4 @@ Then, how do we read the .csv file back into R?
 ```{r}
 dat1_txt<-read.table("C:/project/data/als_aset.txt",sep="|")
 ```
+
