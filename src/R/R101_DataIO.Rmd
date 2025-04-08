@@ -47,7 +47,7 @@ There are existing R packages with wrapper function that can interface with SQL.
 ```{r}
 dat1b<-tbl(
     myconn,
-    sql("select * from PUBLIC.ALS_RILUZOLE_DEATH_FINAL")
+    sql("select * from CLASS_MEMBER_BBME8550_STUDENTS_DB.PUBLIC.ALS_RILUZOLE_DEATH_FINAL")
 ) %>%
   collect()
 ```
