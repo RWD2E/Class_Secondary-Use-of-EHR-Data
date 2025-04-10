@@ -1,7 +1,7 @@
 ---
 title: "Exploratory Data Analysis "
 author: "Xing Song"
-date: "10/18/2022"
+date: "04/10/2025"
 output: html_document
 ---
 
@@ -88,11 +88,22 @@ ggplot(data=aset,aes(x=RACE)) +
   geom_bar()
 ```
 
+```{r}
+ggplot(data=aset,aes(x=RACE)) +
+  geom_bar(aes(y = ..count.. / sum(..count..)))
+```
+
 
 ```{r}
 # example for ordinal data
 ggplot(data=aset,aes(x=AGEGRP)) +
   geom_bar()
+```
+
+```{r}
+# example for ordinal data
+ggplot(data=aset,aes(x=AGEGRP)) +
+  geom_bar(aes(y = ..count.. / sum(..count..)))
 ```
 
 
@@ -173,15 +184,33 @@ tab2
 
 ```{r}
 ggplot(data=aset,aes(x=RACE,fill=AGEGRP)) +
-  geom_bar(position="dodge")
+  geom_bar(stat = "count", position="dodge")
 ```
+
+```{r}
+aset_2grp_bar<-aset %>%
+  select(PATID,RACE,AGEGRP) %>%
+  group_by(RACE) %>%
+  mutate(RACE_tot = length(unique(PATID))) %>%
+  ungroup %>%
+  group_by(RACE,AGEGRP,RACE_tot) %>%
+  summarise(freq = length(unique(PATID)),.groups = "drop") %>%
+  mutate(AGRGRP_in_RACE_perc = freq/RACE_tot)
+  
+
+ggplot(data=aset_2grp_bar,aes(x=RACE,fill=AGEGRP)) +
+  geom_bar(aes(y=AGRGRP_in_RACE_perc),stat = "identity", position="dodge")
+```
+
 
 *Heatmap*
 
 ```{r heat_race_dx}
-ggplot(aset %>% group_by(RACE,AGEGRP) %>%
-         dplyr::summarize(freq=n()) %>% ungroup, 
-       aes(x=AGEGRP,y=RACE,fill=freq))+
+aset_htmap<-aset %>% group_by(RACE,AGEGRP) %>%
+  summarize(freq=length(unique(PATID))) %>% 
+  ungroup
+  
+ggplot(aset_htmap,aes(x=AGEGRP,y=RACE,fill=freq))+
   geom_tile(colour = "white") + 
   scale_fill_gradient(low = "lightblue",high = "steelblue") + 
   theme_classic()
@@ -202,9 +231,9 @@ a) Central Tendency: mean, median, mode
         
 ```{r}
 #mean
-mean(aset$AGE_AT_ALS1DX)
+mean(aset$AGE_AT_DX_DATE1)
 #median
-median(aset$AGE_AT_ALS1DX)
+median(aset$AGE_AT_DX_DATE1)
 #mode
 aset %>% 
   group_by(RACE) %>% 
@@ -216,19 +245,19 @@ b) Spread: min, max, variance, standard deviation (sd), interquartile range (IQR
         
 ```{r}
 #range
-max(aset$AGE_AT_ALS1DX)-min(aset$AGE_AT_ALS1DX)
+max(aset$AGE_AT_DX_DATE1)-min(aset$AGE_AT_DX_DATE1)
 
 #variance
-var(aset$AGE_AT_ALS1DX)
+var(aset$AGE_AT_DX_DATE1)
 
 #sd
-sd(aset$AGE_AT_ALS1DX)
+sd(aset$AGE_AT_DX_DATE1)
 
 #IQR
-IQR(aset$AGE_AT_ALS1DX)
+IQR(aset$AGE_AT_DX_DATE1)
 
 #5-number summary
-summary(aset$AGE_AT_ALS1DX)
+summary(aset$AGE_AT_DX_DATE1)
 ```
 
 c) Shape: skewness (normal distribution is near 0), kurtosis (normal distribution is around 3)
@@ -236,10 +265,10 @@ c) Shape: skewness (normal distribution is near 0), kurtosis (normal distributio
 pacman::p_load("moments")
 
 # skewness
-skewness(aset$AGE_AT_ALS1DX)
+skewness(aset$AGE_AT_DX_DATE1)
 
 # kurtosis
-kurtosis(aset$AGE_AT_ALS1DX)
+kurtosis(aset$AGE_AT_DX_DATE1)
 
 ```
 
@@ -249,22 +278,22 @@ kurtosis(aset$AGE_AT_ALS1DX)
     
 ```{r}
 #histogram
-ggplot(aset,aes(AGE_AT_ALS1DX))+
+ggplot(aset,aes(AGE_AT_DX_DATE1))+
   geom_histogram(bins = 30)
 
 #density plot
-ggplot(aset,aes(AGE_AT_ALS1DX))+
+ggplot(aset,aes(AGE_AT_DX_DATE1))+
   geom_density(bins = 30)
 ```
 
 *Boxplot*
 ```{r}
 #vertical
-ggplot(aset,aes(y=AGE_AT_ALS1DX))+
+ggplot(aset,aes(y=AGE_AT_DX_DATE1))+
   geom_boxplot(bins = 30)
 
 #horizontal
-ggplot(aset,aes(x=AGE_AT_ALS1DX))+
+ggplot(aset,aes(x=AGE_AT_DX_DATE1))+
   geom_boxplot(bins = 30)
 ```
 
@@ -279,12 +308,12 @@ ggplot(aset,aes(x=AGE_AT_ALS1DX))+
 * positive sign suggests positive correlation
           
 ```{r}
-cor(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="pearson")
+cor(aset$AGE_AT_DX_DATE1,aset$RILUZ_DUR,method="pearson")
 ```
 
 *Spearman Correlation*
 ```{r}
-cor(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="spearman")
+cor(aset$AGE_AT_DX_DATE1,aset$RILUZ_DUR,method="spearman")
 ```
 
 
@@ -293,7 +322,7 @@ cor(aset$AGE_AT_ALS1DX,aset$RILUZ_DUR,method="spearman")
 *Scatter Plot*
 
 ```{r}
-ggplot(aset, aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
+ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=RILUZ_DUR))+
   geom_point()+
   geom_smooth(method="loess",formula='y ~ x')
 ```
@@ -306,7 +335,7 @@ ggplot(aset, aes(x=AGE_AT_ALS1DX,y=RILUZ_DUR))+
 *ANOVA*
 
 ```{r}
-fit_aov<-aov(AGE_AT_ALS1DX ~ SEX, data=aset)
+fit_aov<-aov(AGE_AT_DX_DATE1 ~ SEX, data=aset)
 summary(fit_aov)
 ```
 
@@ -316,6 +345,6 @@ summary(fit_aov)
 
 ```{r bmi_boxplot}
 #vertical boxplot
-ggplot(aset,aes(y=AGE_AT_ALS1DX,fill=SEX))+
+ggplot(aset,aes(y=AGE_AT_DX_DATE1,fill=SEX))+
   geom_boxplot()
 ```
