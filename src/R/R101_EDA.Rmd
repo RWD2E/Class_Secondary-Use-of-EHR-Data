@@ -308,12 +308,12 @@ ggplot(aset,aes(x=AGE_AT_DX_DATE1))+
 * positive sign suggests positive correlation
           
 ```{r}
-cor(aset$AGE_AT_DX_DATE1,aset$RILUZ_DUR,method="pearson")
+cor(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="pearson")
 ```
 
 *Spearman Correlation*
 ```{r}
-cor(aset$AGE_AT_DX_DATE1,aset$RILUZ_DUR,method="spearman")
+cor(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="spearman")
 ```
 
 
@@ -322,7 +322,7 @@ cor(aset$AGE_AT_DX_DATE1,aset$RILUZ_DUR,method="spearman")
 *Scatter Plot*
 
 ```{r}
-ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=RILUZ_DUR))+
+ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
   geom_point()+
   geom_smooth(method="loess",formula='y ~ x')
 ```
