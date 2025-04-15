@@ -15,7 +15,7 @@ pacman::p_load(
   epitools,
   rcompanion
 )
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda")
+aset<-readRDS("C:/project/data/als_aset2.rda")
 ```
 
 **************************************************************************************************
