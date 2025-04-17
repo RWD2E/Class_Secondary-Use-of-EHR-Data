@@ -1,7 +1,7 @@
 ---
 title: "Confirmatory Data Analysis "
 author: "Xing Song"
-date: "10/18/2022"
+date: "04/15/2025"
 output: html_document
 ---
 
@@ -102,7 +102,8 @@ t.test(RILUZOLE_DUR ~ SEX, data = aset, alternative="greater")
 *ANOVA*
 
 ```{r}
-summary(aov(RILUZOLE_DUR ~ SEX,data=aset))
+aov_obj<-aov(RILUZOLE_DUR ~ SEX,data=aset)
+summary(aov_obj)
 ```
 
 *Kruskal-Wallis Test*
@@ -116,18 +117,26 @@ kruskal.test(RILUZOLE_DUR ~ SEX,data=aset)
 
 > Motivating Hypothesis: Whether age at first ALS diagnosis is correlated with Riluzole use exposure? 
 
-*Pearson Correlation Coefficient*
+*Pearson Correlation Coefficient (value based)*
 
 ```{r}
 cor.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="pearson")
 ```
 
 
-*Spearman Correlation Coefficient*
+*Spearman Correlation Coefficient (rank based)*
 
 ```{r}
 cor.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="spearman")
 ```
+
+
+*Kendall Correlation Coefficient (rank based)*
+
+```{r}
+cor.test(aset$AGE_AT_DX_DATE1,aset$RILUZOLE_DUR,method="kendall")
+```
+
 
 *Kolmogorov-Smirnov Tests*
 
