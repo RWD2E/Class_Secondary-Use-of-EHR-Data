@@ -21,7 +21,7 @@ aset<-readRDS("C:/project/data/als_aset2.rda")
 Linear regression provides the foundation for many types of analyses we perform on health data. In the simplest scenario, we try to relate one continuous outcome, `y`, to a single continuous covariate, `x`, by trying to find values for `b0` and `b1` so that: 
 `y = b0 + b1*x`. 
 
-> To estimate if `AGE_AT_DX_DATE1` is associated with `RILUZOLE_DUR`; the younger you are, the more likely you will be exposed to Riluzole longer? 
+> To estimate if `AGE_AT_DX_DATE1` is associated with `RILUZOLE_DUR`; the younger someone is, the longer they will be exposed to Riluzole?  
 
 ```{r}
 ggplot(aset, aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
@@ -35,7 +35,7 @@ fit1<-glm(RILUZOLE_DUR ~ AGE_AT_DX_DATE1,
           data=aset)
 
 #model summary
-summary.lm(fit1)
+summary(fit1)
 
 #confidence interval of coefficients
 confint(fit1)
@@ -93,7 +93,7 @@ fit2<-glm(
 )
 
 #model summary
-summary.lm(fit2)
+summary(fit2)
 
 #confidence interval of coefficients
 confint(fit2)
@@ -123,7 +123,7 @@ ggplot(data=resid_dat,aes(x=predicted,y=residual))+
 1-fit2$deviance/fit1$null.deviance
 
 # R-sq is also part of the standard output of summary.lm()
-summary.lm(fit2)
+summary(fit2)
 ```
 
 
