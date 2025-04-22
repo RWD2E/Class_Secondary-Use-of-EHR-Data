@@ -9,7 +9,10 @@ Let's do some preparation for the class by running the following chunk of codes
 
 ```{r setup}
 #load packages
-pacman::p_load(tidyverse,pROC)
+pacman::p_load(
+  tidyverse,
+  pROC
+)
 
 #load data
 aset<-readRDS("C:/project/data/als_aset2.rda")
@@ -134,12 +137,12 @@ summary(fit2)
 ```{r}
 coef(fit2)
 ```
-On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.8 days in the use of Riluzole. 
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.4 days in the use of Riluzole. 
 
 ```{r}
 confint(fit2)
 ```
-On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.8 (95% CI: 0.5, 21.1) days in the use of Riluzole. 
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of 10.4 (95% CI: 1.7, 19.2) days in the use of Riluzole. 
 
 *******************************************************************************************************************
 *******************************************************************************************************************
