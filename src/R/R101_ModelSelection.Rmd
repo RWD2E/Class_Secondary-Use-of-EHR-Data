@@ -257,9 +257,9 @@ step_model <- step(
 
 
 ```{r}
-# Estimate the stepwise predictted probability
+# Optimal model selected by the bi-directional stepwise regression
 fit_both<-glm(
-  RILUZOLE_DUR + RILUZOLE_IND + BMI + AGE_AT_DX_DATE1,
+  MORT_1YR ~ RILUZOLE_DUR + BMI + AGE_AT_DX_DATE1,
   data = aset, 
   family = binomial()
 )
