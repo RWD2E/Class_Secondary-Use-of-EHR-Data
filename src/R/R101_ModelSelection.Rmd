@@ -1,7 +1,7 @@
 ---
 title: "Model Selection"
 author: "Xing Song"
-date: "11/08/2022"
+date: "04/25/2025"
 output: html_document
 ---
 
@@ -9,10 +9,13 @@ Let's do some preparation for the class by running the following chunk of codes
 
 ```{r setup}
 #load packages
-pacman::p_load(tidyverse,pROC)
+pacman::p_load(
+  tidyverse,
+  pROC
+)
 
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda")
+aset<-readRDS("C:/project/data/als_aset2.rda")
 ```
 
 **************************************************************************************************
