@@ -1,7 +1,7 @@
 ---
 title: "Causal Inference"
 author: "Xing Song"
-date: '2022-11-17'
+date: '2025-05-01'
 output: html_document
 ---
 
@@ -25,7 +25,7 @@ Load the analytic dataset used previously for the ALS cohort:
 
 ```{r}
 #load data
-aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
+aset<-readRDS("C:/project/data/als_aset2.rda") %>%
   mutate(MORT_1YR = case_when(OUTCOME_STATUS==1&DAYS_ALS1DX_TO_OUTCOME<=365~1,TRUE~0)) %>%
   mutate(status=OUTCOME_STATUS,
          time=DAYS_ALS1DX_TO_OUTCOME) %>%
@@ -35,7 +35,7 @@ aset<-readRDS("C:/Users/Administrator/Documents/proj/data/final_set2.rda") %>%
 
 Recall from the survival analysis session that we observed that riluzole-user group has higher hazard (or lower survival), which is counter-intuitive: 
 
-```{r,fig.height=5}
+```{r,fig.height=8}
 ggsurvplot(
     fit = survfit(Surv(time,status) ~ RILUZOLE_IND, data = aset),
     pval = TRUE, conf.int = TRUE,risk.table = TRUE,
@@ -76,20 +76,22 @@ myconn <- DBI::dbConnect(
   pwd = ""
 )
 
-add_cci<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_BL_CCI")) %>% collect
-add_fs<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_BL_FS")) %>% collect %>% 
+add_cci<-tbl(myconn,sql("select * from CLASS_MEMBER_BBME8550_STUDENTS_DB.PUBLIC.ALS_BL_CCI")) %>% collect
+add_fs<-tbl(myconn,sql("select * from CLASS_MEMBER_BBME8550_STUDENTS_DB.PUBLIC.ALS_BL_FS")) %>% collect %>% 
   mutate(RGS=trimws(RGS),SPEECH=trimws(SPEECH)) %>%
   mutate(
     LGS_WEAK = case_when(!LGS %in% c('Fair','Strong') ~ 1, TRUE ~ 0),
     RGS_WEAK = case_when(!RGS %in% c('Fair','Strong') ~ 1, TRUE ~ 0),
     SPEECH_ABN = case_when(!SPEECH %in% c('Normal') ~ 1, TRUE ~ 0),
   )
-add_sos<-tbl(myconn,sql("select * from SHARED_DB.ALS.ALS_BL_SOS")) %>% collect
+add_sos<-tbl(myconn,sql("select * from CLASS_MEMBER_BBME8550_STUDENTS_DB.PUBLIC.ALS_BL_SOS")) %>% collect
 
-aset2<-aset %>%
+aset_add<-aset %>%
   inner_join(add_cci,by="PATID") %>%
   inner_join(add_fs,by="PATID") %>%
   inner_join(add_sos,by="PATID")
+
+saveRDS(aset_add, file="C:/project/data/als_aset3.rda")
 ```
 
 
