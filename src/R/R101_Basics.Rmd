@@ -1,0 +1,147 @@
+---
+title: "R101"
+author: "Xing Song"
+date: "2025-08-08"
+output: html_document
+---
+
+# Basic Syntax
+## Variable Assignment
+
+```{r basics}
+x<-4
+y=2
+z<-x+y
+z
+```
+
+# Load Packages
+
+**R Packages**: What makes R a very useful tool for analysis is that there is an active community of people who develop and share analytic-ready packages everyday.The Comprehensive R Archive Network, or CRAN (https://cran.r-project.org/) is a network of repositories where all validated packages are maintained
+
+**R Functions**: What's contained in R packages are "functions". The "Functions" just do something with given set of instructions, or "arguments", and return results for you. There are a lot of powerful functions in R packages that can help you with most of the analysis needs. We will discover them along the way
+
+```{r}
+install.packages("pacman")
+```
+
+You can also install multiple packages: c() means a vector of multiple objects
+
+```{r}
+install.packages(c("pacman","tidyverse"))
+```
+
+Installation only downloads the package as a zipped file saved somewhere in the system, you need to run additional command to load the package in. 
+
+```{r}
+require(pacman) 
+library(pacman)
+```
+
+Alternatively, you can use a package to both installation and loading of multiple packages at once, by using the p_load function from pacman
+
+```{r}
+pacman::p_load(stringr,tableone,tidyverse,VIM,mice)
+```
+
+# Load Data
+
+Data for class demo has been extracted and saved as a table in the shared D:/Data folder as .csv file. You may load it in with the following command: 
+
+```{r}
+dat<-read.csv("Y:/Academic-Medic9703/Data/als_riluz_mort.csv")
+```
+
+
+# Data Visulization
+
+## Data Types
+
+- Quantitative (numerical): data can be measured, written with numbers and manipulated numerically 
+- Qualitative (categorical): data cannot be measured numerically
+
+**ggplot2** package (part of tidyverse) contains almost all functions you need to make figures in R.   
+
+```{r}
+# boxplot
+ggplot(dat,aes(y=BMI))+
+  geom_boxplot()
+```
+
+```{r}
+# histogram
+ggplot(dat,aes(x=AGE_AT_DX_DATE1))+
+  geom_histogram(color="black",fill="white",binwidth = 5)
+```
+
+
+```{r}
+# bar plot
+ggplot(dat,aes(x=RACE))+
+  geom_bar(stat="count")
+```
+
+
+```{r}
+# pie chart
+dat_ethn<-dat %>%
+  group_by(ETHNICITY) %>%
+  summarize(value=length(unique(PATID)),.groups="drop")
+
+ggplot(dat_ethn,aes(x="",y=value,fill=ETHNICITY))+
+  geom_bar(stat="identity")+
+  coord_polar("y")
+```
+
+
+# Data Summarization
+
+**tableone** (https://cran.r-project.org/web/packages/tableone/vignettes/introduction.html) is my new favorite package for generating nice summary output of your dataset. Let's first just summarize the entire dataset including all variables of interests (outcome, exposure, other covariates)
+
+```{r}
+## Vector of variables to summarize
+myVars <- c(
+  "SEX","RACE","ETHNICITY","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","MORT_1YR","MORT_3YR","HT","WT","BMI","NUTR_SUPP","RESP_SUPP"
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c(
+  "SEX","RACE","ETHNICITY","RILUZOLE_IND","MORT_1YR","MORT_3YR","NUTR_SUPP","RESP_SUPP"
+)
+
+## Create a TableOne object
+tab <- CreateTableOne(
+  data = dat,
+  vars = myVars,  
+  factorVars = catVars
+)
+
+#print it out
+tab
+```
+
+We can also stratify this summary based on a particular categorical variable (often time exposure variable)
+
+```{r}
+## Vector of variables to summarize
+myVars <- c(
+  "SEX","RACE","ETHNICITY","AGE_AT_DX_DATE1","RILUZOLE_DUR","MORT_1YR","MORT_3YR","HT","WT","BMI","NUTR_SUPP","RESP_SUPP"
+)
+
+## Vector of categorical variables that need transformation
+catVars <- c(
+  "SEX","RACE","ETHNICITY","MORT_1YR","MORT_3YR","NUTR_SUPP","RESP_SUPP"
+)
+
+## Create a TableOne object
+tab <- CreateTableOne(
+  data = dat,
+  vars = myVars,  
+  factorVars = catVars,
+  strata = "RILUZOLE_IND"
+)
+
+#print it out
+tab
+```
+
