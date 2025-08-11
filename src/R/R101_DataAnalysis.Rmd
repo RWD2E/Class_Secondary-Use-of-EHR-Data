@@ -1,0 +1,405 @@
+---
+title: "R101 Analysis"
+author: "Xing Song"
+date: "2025-08-08"
+output: html_document
+---
+
+# Load packages and data
+
+```{r setup, include=FALSE}
+#install all the packages for this script
+pacman::p_load(
+    tidyverse,# data cleaning packages
+    finalfit,VIM,mice # missing data detection and imputation packages
+)
+
+dat<-read.csv("Y:/Academic-Medic9703/Data/als_riluz_mort.csv")
+```
+
+
+# Data Cleaning 
+
+## Data Duplicates
+
+```{r}
+##========================================================
+# "group_by" function to collect stratified summaries
+#
+# "arrange" function to order data.frame according 
+#  one/many index columns
+##========================================================
+dat %>%
+  group_by(PATID) %>% 
+  filter(n()>1) %>%
+  arrange(PATID) %>%
+  ungroup
+```
+
+
+## Outliers
+
+**Outliers** also called abnormalities, discordant, deviants, and anomalies, are a data point which is difference from the remaining data
+- Outliers not only include errors but also discordant data that arises from natural variations, which may care interesting information (e.g. fraud detection)
+- Most likely to occur among numerical variables
+
+### How to Identify Outliers
+
+- Tukey's method
+
+```{r, warning = F}
+##========================================================
+# Boxplot applied Tukey's method
+##======================================================== 
+ggplot(dat,aes(y=BMI))+
+  geom_boxplot()
+```
+
+- Z-score
+
+```{r}
+##========================================================
+# "select" subset columns of a dataframe
+# "mutate" is to modify or add new columns to a dataframe
+# "filter" is to filter rows based on certain criteria
+##======================================================== 
+
+bmi_z<-dat %>%
+  select(PATID,BMI) %>%
+  mutate(BMI_Z = (BMI-mean(BMI,na.rm=T))/sd(BMI,na.rm=T)) %>%
+  filter(!is.na(BMI_Z))
+
+ggplot(bmi_z, aes(x = BMI_Z)) +
+  geom_histogram(aes(y = ..density..), bins = 30, fill = "lightblue", color = "black", alpha = 0.6) +
+  # add standard normal curve
+  stat_function(fun = dnorm, args = list(mean = 0, sd = 1), 
+                color = "red", size = 1)
+
+
+```
+
+
+### How to Handele Outliers
+
+- **Deletion**: delete the “influential” observations that are obviously “outlier” or “inconsistent”. Can be treated as “missing” data later
+
+- **Correction**: correct the observations that are obviously “outlier” or “inconsistent” with values following certain rules or using imputation.
+
+- **Transformation**: discretize numerical values into bins can help relieve the effect from extreme values  
+
+```{r}
+# delete
+dat<-dat %>%
+  filter(BMI>0 | is.na(BMI))
+```
+
+
+## Missing Data
+
+- **Missing Completely at Random (MCAR)**: the probability of an observation being missing depends only on itself (e.g. disconnection of sensors, human errors)
+
+- **Missing at Random (MAR)**: the probability of a value being missing is related only to some observable data (e.g. if we believe BMI only depends on age, sex and both are observable)
+
+- **Missing Not at Random (MNAR)**: the probability of a value being missing is related to both observable data and unobservable data (e.g. if we believe BMI also depends on genetics, life style, which are not observable)
+
+
+```{r}
+##========================================================
+# "VIM" package provides functions that help you quickly create 
+# elegant final results tables and plots, including an effective
+# way to look at missing patterns
+# 
+# more on: https://statistikat.github.io/VIM/index.html
+##======================================================== 
+myVars <- c(
+  "SEX","RACE","ETHNICITY","AGE_AT_DX_DATE1","RILUZOLE_IND","RILUZOLE_DUR","MORT_1YR","MORT_3YR","BMI","NUTR_SUPP","RESP_SUPP"
+)
+aggr(dat[,myVars]) 
+
+```
+
+
+
+```{r}
+##=====================================================
+# "replace_na" function for quick imputation using
+# a constant value
+##=====================================================
+dat<-dat %>%
+  replace_na(list(RACE='UN',ETHNICITY='UN'))
+
+aggr(dat[,myVars]) 
+```
+
+
+```{r, warning=F}
+##========================================================
+# "mice" package provides functions that help you quickly  
+# take care of the imputing process  
+##======================================================== 
+dat_imp<- dat %>%
+  select(PATID,BMI,SEX,RACE,ETHNICITY,AGE_AT_DX_DATE1,NUTR_SUPP,RESP_SUPP)
+
+dat_addbmi_mice <- mice(
+  dat_imp,
+  m=5, # number of imputed datdats
+  maxit=50, # iterations for each imputation
+  meth='pmm', # method for imputation
+  seed=1, # reproducible
+  printFlag = FALSE # silence
+)
+
+xyplot(dat_addbmi_mice,BMI~AGE_AT_DX_DATE1)
+densityplot(dat_addbmi_mice)
+
+dat_addbmi_imputed<-complete(dat_addbmi_mice,1)
+head(dat_addbmi_imputed)
+
+bmi_imputed<-dat_addbmi_imputed %>% 
+  select(PATID,BMI)
+
+dat2<-dat %>%
+  select(-BMI) %>%
+  inner_join(bmi_imputed, by="PATID")
+```
+
+*******************************************************************************************************************
+
+# Linear Regression
+
+> To estimate if `AGE_AT_DX_DATE1` is associated with `RILUZOLE_DUR`; the younger someone is, the longer they will be exposed to Riluzole? 
+
+```{r}
+ggplot(dat2, aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR))+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit1<-glm(RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
+          data=dat2)
+
+#model summary
+summary(fit1)
+
+#confidence interval of coefficients
+confint(fit1)
+```
+
+*******************************************************************************************************************
+
+**Model Diagnostic**
+
+However, there are three assumptions for regression analysis which you need to check to validate the model results. It is always a good practice to perform **residual analysis** (or diagnostic plots) to visually check the following three assumptions:
+
+* Independence: residual vs. predicted plot, or actual vs. predicted plot
+* Homoscedasticity (equal variance): residual vs. predicted plot, or actual vs. predicted plot
+
+```{r,fig.height=4}
+# values needed for model diagnostics
+resid_dat<-data.frame(actual=fit1$data$RILUZOLE_DUR,
+                      predicted=fit1$fitted.values,
+                      residual=fit1$residuals)
+
+ggplot(data=resid_dat,aes(x=predicted,y=residual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+
+ggplot(data=resid_dat,aes(x=predicted,y=actual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+```
+
+
+* Normality: Quartile - Quartile plot (QQ-plot)
+
+```{r}
+ggplot(data=resid_dat,aes(sample=residual))+
+  stat_qq()+stat_qq_line()
+```
+
+**Remark**: you may want to perform log transformation on both numerical outcome and covariate, so that the residuals would look more homoscedastic and normal. But you want to be cautious about how you interpret the resulting coefficient. 
+
+
+```{r}
+ggplot(
+  dat2 %>% filter(RILUZOLE_DUR > 0),
+  aes(x=AGE_AT_DX_DATE1,y=RILUZOLE_DUR)
+)+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit2<-glm(
+  RILUZOLE_DUR ~ AGE_AT_DX_DATE1, 
+  data=dat2 %>% filter(RILUZOLE_DUR > 0),
+)
+
+#model summary
+summary(fit2)
+
+#confidence interval of coefficients
+confint(fit2)
+```
+
+
+```{r}
+resid_dat<-data.frame(actual=fit2$data$RILUZOLE_DUR,
+                      predicted=fit2$fitted.values,
+                      residual=fit2$residuals)
+
+ggplot(data=resid_dat,aes(x=predicted,y=residual))+
+  geom_point()+
+   geom_smooth(method="lm",formula = 'y~x')
+```
+
+
+*******************************************************************************************************************
+
+**Goodness of fit**
+
+* R-square: evaluate the percentage of variations that can be explained by the model. The higher the R-square value, the better the linear model fitted
+
+```{r}
+# direct calculation of R-sq
+1-fit1$deviance/fit1$null.deviance
+1-fit2$deviance/fit1$null.deviance
+
+# R-sq is also part of the standard output of summary.lm()
+summary(fit2)
+```
+
+
+*******************************************************************************************************************
+
+**Result Interpretation**
+
+```{r}
+coef(fit2)
+```
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of XX days in the use of Riluzole. 
+
+```{r}
+confint(fit2)
+```
+On average, every 1 year increase in the AGE_AT_DX_DATE1 (age at first ALS diagnosis) will result in a decrease of XX (95% CI: XX, XX) days in the use of Riluzole. 
+
+*******************************************************************************************************************
+*******************************************************************************************************************
+
+
+### Logisit Regression (16.3)
+
+Now, let's look at another question or interest: 
+
+> To estimate if there is an association between `AGE_AT_DX_DATE1` and `MORT_1YR`
+
+```{r}
+ggplot(dat2, aes(x=AGE_AT_DX_DATE1,y=MORT_1YR))+
+  geom_point()+
+  geom_smooth(method="loess",formula = 'y~x')
+```
+
+
+```{r}
+fit3<-glm(MORT_1YR ~ AGE_AT_DX_DATE1, data=dat2,family='binomial') 
+summary(fit3)
+```
+
+
+*******************************************************************************************************************
+
+**Goodness of fit**
+
+* Predictions: in logistic regression, the predictions are the _predicted/estimated/fitted probabilities_ of your target event (outcome).
+
+```{r pred}
+# values needed for model diagnostics
+resid_dat<-data.frame(
+  actual=fit3$data$MORT_1YR,
+  predicted=fit3$fitted.values,
+  residual=fit3$residuals
+)
+
+resid_dat %>% arrange(predicted)
+```
+
+Let's create a rule to further classify the predictions: if predicted probability >= 0.2, then MORT_1YR = 1; otherwise, MORT_1YR = 0. Then, my final *confusion matrix* (or *error matrix*) will be: 
+
+```{r}
+resid_dat<-resid_dat %>% 
+  mutate(MORT_1YR_hat=case_when(predicted>=0.2 ~ 1,TRUE ~ 0))
+confusion_matrix<-table(resid_dat$MORT_1YR_hat,resid_dat$actual,
+                        dnn=list("predicted","Actual"))
+confusion_matrix
+```
+
+
+```{r}
+TP<-confusion_matrix[2,2]
+TN<-confusion_matrix[1,1]
+FP<-confusion_matrix[2,1]
+FN<-confusion_matrix[1,2]
+
+Ture_case<-TP+FN
+False_case<-TN+FP
+
+sensitivity<-TP/Ture_case
+specificity<-TN/False_case
+
+sensitivity
+specificity
+```
+
+
+```{r}
+pos<-TP+FP
+ppv<-TP/pos
+ppv
+```
+
+However, all the above metrics and confusion matrix is determined by what threshold rule I chose. What if I used a different rule to classify the predictions: if predicted probability >= 0.3, then MORT_1YR = 1; otherwise, MORT_1YR = 0.What will the above GoF metrics change to? 
+
+
+*Area under reciever operating curve (AUROC, AUC, ROC)*
+- Average sensitivity over all possible values of specificity
+
+```{r}
+fit3_roc<-pROC::roc(resid_dat$actual, resid_dat$predicted)
+
+full_roc<-data.frame(cutoff=fit3_roc$thresholds,
+                     sensitivity=fit3_roc$sensitivities,
+                     specificity=fit3_roc$specificities)
+full_roc
+```
+
+
+```{r}
+ggplot(full_roc,aes(y=sensitivity, x=1-specificity))+
+  geom_point(size=2)+ geom_line()+geom_abline(linetype=2)+
+  labs(subtitle = paste0("AUC:",round(fit3_roc$auc,4)))
+```
+
+
+*******************************************************************************************************************
+
+**Result Interpretation**
+
+```{r}
+coef(fit3)
+exp(coef(fit3))
+```
+On average, every 1-year increase in AGE_AT_DX_DATE1 (age at first diagnosis) will increase the odds of death within 1 year by xxx folds. 
+
+```{r}
+confint(fit3)
+exp(confint(fit3))
+```
+On average, every 1-year increase in AGE_AT_DX_DATE1 (age at first diagnosis) will increase the odds of death within 1 year by xxx folds (95% CI,xxx - xxx). 
+
+
+
+
