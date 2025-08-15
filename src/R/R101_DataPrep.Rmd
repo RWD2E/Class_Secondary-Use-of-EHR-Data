@@ -230,6 +230,7 @@ df_addbmi %>%
 ```
 
 
+
 ```{r}
 ##=====================================================
 # "replace_na" function for quick imputation using
@@ -265,6 +266,8 @@ densityplot(df_addbmi_mice)
 
 df_addbmi_imputed<-complete(df_addbmi_mice,1)
 head(df_addbmi_imputed)
+
+#
 ```
 
 
